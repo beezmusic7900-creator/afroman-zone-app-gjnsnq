@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ScrollView, View, Text, Image, TouchableOpacity, StyleSheet, Platform, TextInput, Alert } from 'react-native';
+import { ScrollView, View, Text, Image, TouchableOpacity, StyleSheet, Platform, Alert, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { freeVideos, premiumVideos } from '@/data/videos';
@@ -8,35 +8,87 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function MoviesScreen() {
   const router = useRouter();
-  const { isUserLoggedIn, userLogin, userLogout } = useAuth();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showLogin, setShowLogin] = useState(false);
+  const { isSubscribed, isGuest, setGuestMode, subscribe } = useAuth();
+  const [showOptions, setShowOptions] = useState(!isGuest && !isSubscribed);
 
-  const handleLogin = () => {
-    const success = userLogin(username, password);
-    if (success) {
-      Alert.alert('Success', 'Logged in successfully!');
-      setUsername('');
-      setPassword('');
-      setShowLogin(false);
-    } else {
-      Alert.alert('Error', 'Invalid username or password');
-    }
+  const handleGuestMode = () => {
+    setGuestMode(true);
+    setShowOptions(false);
+    Alert.alert('Guest Mode', 'You can browse as a guest. Subscribe to access exclusive content!');
   };
 
-  const handleLogout = () => {
-    userLogout();
-    Alert.alert('Logged Out', 'You have been logged out successfully');
+  const handleSubscribe = async () => {
+    const subscriptionUrl = 'https://buy.stripe.com/7sYdRb1Nj5xCfSlfKd6Na07';
+    
+    try {
+      const supported = await Linking.canOpenURL(subscriptionUrl);
+      if (supported) {
+        await Linking.openURL(subscriptionUrl);
+        Alert.alert(
+          'Complete Payment',
+          'After completing payment, return to the app to access exclusive content.',
+          [
+            {
+              text: 'I Completed Payment',
+              onPress: () => {
+                subscribe();
+                setShowOptions(false);
+                Alert.alert('Success', 'Welcome! You now have access to all exclusive content.');
+              },
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Unable to open subscription link');
+      }
+    } catch (error) {
+      console.log('Error opening subscription link:', error);
+      Alert.alert('Error', 'Unable to open subscription link');
+    }
   };
 
   const handleVideoPress = (videoId: string, isFree: boolean) => {
-    if (!isFree && !isUserLoggedIn) {
-      Alert.alert('Login Required', 'Please login to view exclusive content');
-      setShowLogin(true);
+    if (!isFree && !isSubscribed) {
+      Alert.alert(
+        'Subscription Required',
+        'Subscribe for $19.99 to access all exclusive content',
+        [
+          {
+            text: 'Subscribe Now',
+            onPress: handleSubscribe,
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
       return;
     }
     router.push(`/video/${videoId}`);
+  };
+
+  const handleExclusiveContentPress = () => {
+    if (!isSubscribed) {
+      Alert.alert(
+        'Subscription Required',
+        'Subscribe for $19.99 to access all exclusive content',
+        [
+          {
+            text: 'Subscribe Now',
+            onPress: handleSubscribe,
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
+    }
   };
 
   return (
@@ -48,55 +100,41 @@ export default function MoviesScreen() {
       >
         <View style={styles.header}>
           <Image
-            source={{ uri: 'https://prod-finalquest-user-projects-storage-bucket-aws.s3.amazonaws.com/user-projects/92c958b2-61a2-43c5-97d3-cb274fd3249a/assets/images/01425c73-5574-4e49-90ea-0ea6fcacd8b0.jpeg?AWSAccessKeyId=AKIAVRUVRKQJC5DISQ4Q&Signature=e9zghH%2BSbbZfxnYqq%2FqwMO1ohf0%3D&Expires=1765327380' }}
+            source={require('@/assets/images/final_quest_240x240.png')}
             style={commonStyles.logoSmall}
           />
           <Text style={commonStyles.title}>Movies & Videos</Text>
-          {isUserLoggedIn ? (
-            <View style={styles.loginStatus}>
-              <Text style={styles.loginStatusText}>✓ Logged In</Text>
-              <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-                <Text style={styles.logoutButtonText}>Logout</Text>
-              </TouchableOpacity>
+          {isSubscribed && (
+            <View style={styles.subscribedBadge}>
+              <Text style={styles.subscribedText}>✓ SUBSCRIBED</Text>
             </View>
-          ) : (
-            <TouchableOpacity onPress={() => setShowLogin(!showLogin)} style={styles.loginPrompt}>
-              <Text style={styles.loginPromptText}>
-                {showLogin ? 'Hide Login' : 'Login for Exclusive Content'}
-              </Text>
-            </TouchableOpacity>
           )}
         </View>
 
-        {!isUserLoggedIn && showLogin && (
+        {showOptions && (
           <View style={commonStyles.card}>
-            <Text style={styles.loginTitle}>User Login</Text>
+            <Text style={styles.optionsTitle}>Welcome!</Text>
             <Text style={commonStyles.textSecondary}>
-              Login to access exclusive movies and content
+              Choose how you&apos;d like to continue:
             </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Username"
-              placeholderTextColor={colors.textSecondary}
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor={colors.textSecondary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-              <Text style={styles.buttonText}>Login</Text>
+            
+            <TouchableOpacity
+              style={styles.subscribeButton}
+              onPress={handleSubscribe}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.buttonText}>Subscribe - $19.99</Text>
+              <Text style={styles.buttonSubtext}>Access all exclusive content</Text>
             </TouchableOpacity>
-            <Text style={styles.credentialsHint}>
-              Demo credentials: username: user, password: afroman123
-            </Text>
+
+            <TouchableOpacity
+              style={styles.guestButton}
+              onPress={handleGuestMode}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.guestButtonText}>Continue as Guest</Text>
+              <Text style={styles.guestButtonSubtext}>Browse free content only</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -107,6 +145,7 @@ export default function MoviesScreen() {
               key={video.id}
               style={commonStyles.card}
               onPress={() => handleVideoPress(video.id, video.isFree)}
+              activeOpacity={0.7}
             >
               <Image
                 source={{ uri: video.thumbnailUrl }}
@@ -128,28 +167,50 @@ export default function MoviesScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Exclusive Content</Text>
-          {!isUserLoggedIn && (
-            <View style={commonStyles.card}>
-              <Text style={commonStyles.text}>
-                🔒 Login to unlock exclusive movies and behind-the-scenes content!
+          
+          <TouchableOpacity
+            style={[commonStyles.card, styles.exclusiveCard]}
+            onPress={handleExclusiveContentPress}
+            activeOpacity={0.7}
+          >
+            <View style={styles.exclusiveContent}>
+              <Text style={styles.lockIcon}>🔒</Text>
+              <Text style={styles.exclusiveTitle}>
+                {isSubscribed ? 'Coming Soon!' : 'Subscribe to Unlock'}
               </Text>
+              <Text style={commonStyles.textSecondary}>
+                {isSubscribed 
+                  ? 'Exclusive content will be added by the admin'
+                  : 'Get access to exclusive movies, behind-the-scenes content, and more for just $19.99'}
+              </Text>
+              {!isSubscribed && (
+                <TouchableOpacity
+                  style={styles.unlockButton}
+                  onPress={handleSubscribe}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.buttonText}>Subscribe Now - $19.99</Text>
+                </TouchableOpacity>
+              )}
             </View>
-          )}
-          {premiumVideos.map((video) => (
+          </TouchableOpacity>
+
+          {premiumVideos.length > 0 && premiumVideos.map((video) => (
             <TouchableOpacity
               key={video.id}
-              style={[commonStyles.card, !isUserLoggedIn && styles.lockedCard]}
+              style={[commonStyles.card, !isSubscribed && styles.lockedCard]}
               onPress={() => handleVideoPress(video.id, video.isFree)}
+              activeOpacity={0.7}
             >
               <View style={styles.thumbnailContainer}>
                 <Image
                   source={{ uri: video.thumbnailUrl }}
-                  style={[styles.thumbnail, !isUserLoggedIn && styles.lockedThumbnail]}
+                  style={[styles.thumbnail, !isSubscribed && styles.lockedThumbnail]}
                 />
-                {!isUserLoggedIn && (
+                {!isSubscribed && (
                   <View style={styles.lockOverlay}>
                     <Text style={styles.lockIcon}>🔒</Text>
-                    <Text style={styles.lockText}>Login Required</Text>
+                    <Text style={styles.lockText}>Subscribe to Watch</Text>
                   </View>
                 )}
               </View>
@@ -186,78 +247,62 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     paddingVertical: 20,
   },
-  loginStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  subscribedBadge: {
     marginTop: 12,
-  },
-  loginStatusText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  logoutButton: {
     paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.textSecondary,
-  },
-  logoutButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  loginPrompt: {
-    marginTop: 12,
-    paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 6,
+    borderRadius: 20,
     backgroundColor: colors.primary,
   },
-  loginPromptText: {
+  subscribedText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#FFFFFF',
   },
-  loginTitle: {
-    fontSize: 20,
+  optionsTitle: {
+    fontSize: 24,
     fontWeight: '700',
     color: colors.text,
     marginBottom: 8,
   },
-  input: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.textSecondary,
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: colors.text,
-    marginTop: 12,
-  },
-  loginButton: {
+  subscribeButton: {
     backgroundColor: colors.primary,
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 16,
   },
+  guestButton: {
+    backgroundColor: colors.card,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 12,
+    borderWidth: 2,
+    borderColor: colors.textSecondary,
+  },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
   },
-  credentialsHint: {
-    fontSize: 12,
+  buttonSubtext: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    marginTop: 4,
+    opacity: 0.9,
+  },
+  guestButtonText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  guestButtonSubtext: {
     color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 12,
-    fontStyle: 'italic',
+    fontSize: 12,
+    marginTop: 4,
   },
   section: {
     marginBottom: 24,
@@ -342,5 +387,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#000000',
+  },
+  exclusiveCard: {
+    minHeight: 200,
+    justifyContent: 'center',
+  },
+  exclusiveContent: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  exclusiveTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  unlockButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
   },
 });

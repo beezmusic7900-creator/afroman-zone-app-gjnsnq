@@ -3,11 +3,12 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface AuthContextType {
   isAdminLoggedIn: boolean;
-  isUserLoggedIn: boolean;
+  isSubscribed: boolean;
+  isGuest: boolean;
   login: (username: string, password: string) => boolean;
-  userLogin: (username: string, password: string) => boolean;
   logout: () => void;
-  userLogout: () => void;
+  setGuestMode: (isGuest: boolean) => void;
+  subscribe: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -15,12 +16,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const ADMIN_USERNAME = 'admin';
 const ADMIN_PASSWORD = 'afroman2025';
 
-const USER_USERNAME = 'user';
-const USER_PASSWORD = 'afroman123';
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
 
   const login = (username: string, password: string): boolean => {
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
@@ -30,24 +29,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
-  const userLogin = (username: string, password: string): boolean => {
-    if (username === USER_USERNAME && password === USER_PASSWORD) {
-      setIsUserLoggedIn(true);
-      return true;
-    }
-    return false;
-  };
-
   const logout = () => {
     setIsAdminLoggedIn(false);
+    setIsSubscribed(false);
+    setIsGuest(false);
   };
 
-  const userLogout = () => {
-    setIsUserLoggedIn(false);
+  const setGuestMode = (guest: boolean) => {
+    setIsGuest(guest);
+  };
+
+  const subscribe = () => {
+    setIsSubscribed(true);
   };
 
   return (
-    <AuthContext.Provider value={{ isAdminLoggedIn, isUserLoggedIn, login, userLogin, logout, userLogout }}>
+    <AuthContext.Provider value={{ 
+      isAdminLoggedIn, 
+      isSubscribed, 
+      isGuest, 
+      login, 
+      logout, 
+      setGuestMode,
+      subscribe 
+    }}>
       {children}
     </AuthContext.Provider>
   );

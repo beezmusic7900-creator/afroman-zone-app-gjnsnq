@@ -15,7 +15,11 @@ export default function VideoPlayerScreen() {
     return (
       <View style={styles.container}>
         <Text style={commonStyles.text}>Video not found</Text>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
           <Text style={styles.buttonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -48,8 +52,12 @@ export default function VideoPlayerScreen() {
           )}
         </View>
 
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.buttonText}>Back to Home</Text>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.buttonText}>Back to Videos</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>

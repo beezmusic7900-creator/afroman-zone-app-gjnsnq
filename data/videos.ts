@@ -22,21 +22,4 @@ export const freeVideos: Video[] = [
   },
 ];
 
-export const premiumVideos: Video[] = [
-  {
-    id: '3',
-    title: 'Exclusive Content 1',
-    description: 'Premium content for subscribers only',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800',
-    videoUrl: '',
-    isFree: false,
-  },
-  {
-    id: '4',
-    title: 'Exclusive Content 2',
-    description: 'Premium content for subscribers only',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800',
-    videoUrl: '',
-    isFree: false,
-  },
-];
+export const premiumVideos: Video[] = [];

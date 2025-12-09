@@ -1,17 +1,42 @@
 
 import React from 'react';
-import { ScrollView, View, Text, Image, TouchableOpacity, StyleSheet, Platform, Linking } from 'react-native';
+import { ScrollView, View, Text, Image, TouchableOpacity, StyleSheet, Platform, Linking, Alert } from 'react-native';
 import { colors, commonStyles } from '@/styles/commonStyles';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function SubscriptionScreen() {
+  const { isSubscribed, subscribe } = useAuth();
+
   const handleSubscribe = async () => {
-    const url = 'https://buy.stripe.com/7sYdRb1Nj5xCfSlfKd6Na07';
-    const supported = await Linking.canOpenURL(url);
+    const subscriptionUrl = 'https://buy.stripe.com/7sYdRb1Nj5xCfSlfKd6Na07';
     
-    if (supported) {
-      await Linking.openURL(url);
-    } else {
-      console.log('Cannot open URL:', url);
+    try {
+      const supported = await Linking.canOpenURL(subscriptionUrl);
+      if (supported) {
+        await Linking.openURL(subscriptionUrl);
+        Alert.alert(
+          'Complete Payment',
+          'After completing payment, return to the app to access exclusive content.',
+          [
+            {
+              text: 'I Completed Payment',
+              onPress: () => {
+                subscribe();
+                Alert.alert('Success', 'Welcome! You now have access to all exclusive content.');
+              },
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Unable to open subscription link');
+      }
+    } catch (error) {
+      console.log('Error opening subscription link:', error);
+      Alert.alert('Error', 'Unable to open subscription link');
     }
   };
 
@@ -24,96 +49,91 @@ export default function SubscriptionScreen() {
       >
         <View style={styles.header}>
           <Image
-            source={{ uri: 'https://prod-finalquest-user-projects-storage-bucket-aws.s3.amazonaws.com/user-projects/92c958b2-61a2-43c5-97d3-cb274fd3249a/assets/images/01425c73-5574-4e49-90ea-0ea6fcacd8b0.jpeg?AWSAccessKeyId=AKIAVRUVRKQJC5DISQ4Q&Signature=e9zghH%2BSbbZfxnYqq%2FqwMO1ohf0%3D&Expires=1765327380' }}
+            source={require('@/assets/images/final_quest_240x240.png')}
             style={commonStyles.logoSmall}
           />
           <Text style={commonStyles.title}>Premium Subscription</Text>
-          <Text style={commonStyles.textSecondary}>
-            Get exclusive access to all premium content
-          </Text>
+          {isSubscribed && (
+            <View style={styles.subscribedBadge}>
+              <Text style={styles.subscribedText}>✓ ACTIVE SUBSCRIPTION</Text>
+            </View>
+          )}
         </View>
 
-        <View style={commonStyles.card}>
-          <Text style={styles.benefitTitle}>What You Get:</Text>
-          
-          <View style={styles.benefit}>
-            <Text style={styles.checkmark}>✓</Text>
-            <Text style={commonStyles.text}>Exclusive music videos and content</Text>
-          </View>
+        {!isSubscribed ? (
+          <React.Fragment>
+            <View style={commonStyles.card}>
+              <Text style={styles.priceTitle}>$19.99</Text>
+              <Text style={styles.priceSubtitle}>One-time payment</Text>
+              <Text style={commonStyles.textSecondary}>
+                Get unlimited access to all exclusive content
+              </Text>
+            </View>
 
-          <View style={styles.benefit}>
-            <Text style={styles.checkmark}>✓</Text>
-            <Text style={commonStyles.text}>Behind-the-scenes footage</Text>
-          </View>
+            <View style={commonStyles.card}>
+              <Text style={styles.featuresTitle}>What&apos;s Included:</Text>
+              <View style={styles.featureItem}>
+                <Text style={styles.featureIcon}>✓</Text>
+                <Text style={styles.featureText}>Access to all exclusive movies and videos</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Text style={styles.featureIcon}>✓</Text>
+                <Text style={styles.featureText}>Behind-the-scenes content</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Text style={styles.featureIcon}>✓</Text>
+                <Text style={styles.featureText}>Early access to new releases</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Text style={styles.featureIcon}>✓</Text>
+                <Text style={styles.featureText}>Exclusive interviews and documentaries</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Text style={styles.featureIcon}>✓</Text>
+                <Text style={styles.featureText}>Ad-free viewing experience</Text>
+              </View>
+            </View>
 
-          <View style={styles.benefit}>
-            <Text style={styles.checkmark}>✓</Text>
-            <Text style={commonStyles.text}>Early access to new releases</Text>
-          </View>
+            <TouchableOpacity
+              style={styles.subscribeButton}
+              onPress={handleSubscribe}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.buttonText}>Subscribe Now - $19.99</Text>
+            </TouchableOpacity>
 
-          <View style={styles.benefit}>
-            <Text style={styles.checkmark}>✓</Text>
-            <Text style={commonStyles.text}>Offline downloads for all content</Text>
-          </View>
+            <View style={styles.securePayment}>
+              <Text style={commonStyles.textSecondary}>
+                🔒 Secure payment processed through Stripe
+              </Text>
+            </View>
+          </React.Fragment>
+        ) : (
+          <React.Fragment>
+            <View style={commonStyles.card}>
+              <Text style={styles.thankYouTitle}>Thank You!</Text>
+              <Text style={commonStyles.text}>
+                You now have full access to all exclusive content. Enjoy watching!
+              </Text>
+            </View>
 
-          <View style={styles.benefit}>
-            <Text style={styles.checkmark}>✓</Text>
-            <Text style={commonStyles.text}>Playback speed control</Text>
-          </View>
-
-          <View style={styles.benefit}>
-            <Text style={styles.checkmark}>✓</Text>
-            <Text style={commonStyles.text}>Ad-free experience</Text>
-          </View>
-
-          <View style={styles.benefit}>
-            <Text style={styles.checkmark}>✓</Text>
-            <Text style={commonStyles.text}>Access to exclusive live streams</Text>
-          </View>
-        </View>
-
-        <View style={commonStyles.card}>
-          <Text style={styles.priceTitle}>Premium Access</Text>
-          <Text style={styles.priceDescription}>
-            Unlock all exclusive content and features
-          </Text>
-          
-          <TouchableOpacity
-            style={styles.subscribeButton}
-            onPress={handleSubscribe}
-          >
-            <Text style={styles.buttonText}>Subscribe Now</Text>
-          </TouchableOpacity>
-
-          <Text style={styles.disclaimer}>
-            Secure payment processed through Stripe. Cancel anytime.
-          </Text>
-        </View>
-
-        <View style={styles.faqSection}>
-          <Text style={styles.faqTitle}>Frequently Asked Questions</Text>
-          
-          <View style={styles.faqItem}>
-            <Text style={styles.faqQuestion}>Can I cancel anytime?</Text>
-            <Text style={commonStyles.textSecondary}>
-              Yes, you can cancel your subscription at any time with no penalties.
-            </Text>
-          </View>
-
-          <View style={styles.faqItem}>
-            <Text style={styles.faqQuestion}>What payment methods are accepted?</Text>
-            <Text style={commonStyles.textSecondary}>
-              We accept all major credit cards through our secure Stripe payment processor.
-            </Text>
-          </View>
-
-          <View style={styles.faqItem}>
-            <Text style={styles.faqQuestion}>Can I download content for offline viewing?</Text>
-            <Text style={commonStyles.textSecondary}>
-              Yes! Premium subscribers can download any content for offline viewing.
-            </Text>
-          </View>
-        </View>
+            <View style={commonStyles.card}>
+              <Text style={styles.featuresTitle}>Your Benefits:</Text>
+              <View style={styles.featureItem}>
+                <Text style={styles.featureIcon}>✓</Text>
+                <Text style={styles.featureText}>Unlimited access to exclusive content</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Text style={styles.featureIcon}>✓</Text>
+                <Text style={styles.featureText}>New content added regularly</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Text style={styles.featureIcon}>✓</Text>
+                <Text style={styles.featureText}>Premium viewing experience</Text>
+              </View>
+            </View>
+          </React.Fragment>
+        )}
       </ScrollView>
     </View>
   );
@@ -137,72 +157,77 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     paddingVertical: 20,
   },
-  benefitTitle: {
+  subscribedBadge: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+  },
+  subscribedText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  priceTitle: {
+    fontSize: 48,
+    fontWeight: '800',
+    color: colors.primary,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  priceSubtitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  featuresTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.text,
     marginBottom: 16,
   },
-  benefit: {
+  featureItem: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 12,
-    gap: 12,
   },
-  checkmark: {
+  featureIcon: {
     fontSize: 20,
     color: colors.primary,
+    marginRight: 12,
     fontWeight: '700',
   },
-  priceTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  priceDescription: {
+  featureText: {
     fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 20,
+    color: colors.text,
+    flex: 1,
   },
   subscribeButton: {
     backgroundColor: colors.primary,
-    paddingVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 32,
     borderRadius: 8,
     alignItems: 'center',
-    marginVertical: 12,
+    marginTop: 24,
   },
   buttonText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
   },
-  disclaimer: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 12,
-  },
-  faqSection: {
-    marginTop: 24,
+  securePayment: {
+    alignItems: 'center',
+    marginTop: 16,
     marginBottom: 24,
   },
-  faqTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.text,
+  thankYouTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: colors.primary,
+    textAlign: 'center',
     marginBottom: 16,
-  },
-  faqItem: {
-    marginBottom: 20,
-  },
-  faqQuestion: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 8,
   },
 });

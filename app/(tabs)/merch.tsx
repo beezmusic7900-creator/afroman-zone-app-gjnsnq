@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ScrollView, View, Text, Image, TouchableOpacity, StyleSheet, Platform, Alert } from 'react-native';
+import { ScrollView, View, Text, Image, TouchableOpacity, StyleSheet, Platform, Alert, Linking } from 'react-native';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { merchandise } from '@/data/merchandise';
 import { useCart } from '@/contexts/CartContext';
@@ -24,6 +24,28 @@ export default function MerchScreen() {
     setSelectedSizes((prev) => ({ ...prev, [itemId]: size }));
   };
 
+  const handleBuyNow = async (item: MerchItem) => {
+    const selectedSize = selectedSizes[item.id];
+    if (!selectedSize) {
+      Alert.alert('Select Size', 'Please select a size before purchasing');
+      return;
+    }
+
+    const paymentUrl = 'https://buy.stripe.com/6oU3cx77D1hmcG92Xr6Na02';
+    
+    try {
+      const supported = await Linking.canOpenURL(paymentUrl);
+      if (supported) {
+        await Linking.openURL(paymentUrl);
+      } else {
+        Alert.alert('Error', 'Unable to open payment link');
+      }
+    } catch (error) {
+      console.log('Error opening payment link:', error);
+      Alert.alert('Error', 'Unable to open payment link');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -33,7 +55,7 @@ export default function MerchScreen() {
       >
         <View style={styles.header}>
           <Image
-            source={{ uri: 'https://prod-finalquest-user-projects-storage-bucket-aws.s3.amazonaws.com/user-projects/92c958b2-61a2-43c5-97d3-cb274fd3249a/assets/images/01425c73-5574-4e49-90ea-0ea6fcacd8b0.jpeg?AWSAccessKeyId=AKIAVRUVRKQJC5DISQ4Q&Signature=e9zghH%2BSbbZfxnYqq%2FqwMO1ohf0%3D&Expires=1765327380' }}
+            source={require('@/assets/images/final_quest_240x240.png')}
             style={commonStyles.logoSmall}
           />
           <Text style={commonStyles.title}>Official Merchandise</Text>
@@ -41,7 +63,7 @@ export default function MerchScreen() {
 
         {merchandise.map((item) => (
           <View key={item.id} style={commonStyles.card}>
-            <Image source={{ uri: item.imageUrl }} style={styles.productImage} />
+            <Image source={item.imageUrl} style={styles.productImage} />
             <Text style={styles.productName}>{item.name}</Text>
             <Text style={commonStyles.textSecondary}>{item.description}</Text>
             <Text style={styles.price}>${item.price.toFixed(2)}</Text>
@@ -57,6 +79,7 @@ export default function MerchScreen() {
                       selectedSizes[item.id] === size && styles.sizeButtonSelected,
                     ]}
                     onPress={() => handleSelectSize(item.id, size)}
+                    activeOpacity={0.7}
                   >
                     <Text
                       style={[
@@ -71,12 +94,23 @@ export default function MerchScreen() {
               </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.addToCartButton}
-              onPress={() => handleAddToCart(item)}
-            >
-              <Text style={styles.buttonText}>Add to Cart</Text>
-            </TouchableOpacity>
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={styles.addToCartButton}
+                onPress={() => handleAddToCart(item)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.buttonText}>Add to Cart</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.buyNowButton}
+                onPress={() => handleBuyNow(item)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.buttonText}>Buy Now</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ))}
 
@@ -113,6 +147,7 @@ const styles = StyleSheet.create({
     height: 250,
     borderRadius: 8,
     marginBottom: 12,
+    resizeMode: 'contain',
   },
   productName: {
     fontSize: 20,
@@ -160,13 +195,26 @@ const styles = StyleSheet.create({
   sizeButtonTextSelected: {
     color: '#FFFFFF',
   },
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
   addToCartButton: {
+    flex: 1,
     backgroundColor: colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 12,
+  },
+  buyNowButton: {
+    flex: 1,
+    backgroundColor: colors.accent,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
   },
   buttonText: {
     color: '#FFFFFF',

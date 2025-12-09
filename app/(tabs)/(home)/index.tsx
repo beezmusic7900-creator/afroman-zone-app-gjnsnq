@@ -17,7 +17,7 @@ export default function HomeScreen() {
       >
         <View style={styles.header}>
           <Image
-            source={{ uri: 'https://prod-finalquest-user-projects-storage-bucket-aws.s3.amazonaws.com/user-projects/92c958b2-61a2-43c5-97d3-cb274fd3249a/assets/images/01425c73-5574-4e49-90ea-0ea6fcacd8b0.jpeg?AWSAccessKeyId=AKIAVRUVRKQJC5DISQ4Q&Signature=e9zghH%2BSbbZfxnYqq%2FqwMO1ohf0%3D&Expires=1765327380' }}
+            source={require('@/assets/images/final_quest_240x240.png')}
             style={commonStyles.logo}
           />
           <Text style={commonStyles.title}>AFROMAN</Text>
@@ -31,6 +31,7 @@ export default function HomeScreen() {
               key={video.id}
               style={commonStyles.card}
               onPress={() => router.push(`/video/${video.id}`)}
+              activeOpacity={0.7}
             >
               <Image
                 source={{ uri: video.thumbnailUrl }}
@@ -53,6 +54,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={[commonStyles.card, styles.exploreCard]}
             onPress={() => router.push('/(tabs)/movies')}
+            activeOpacity={0.7}
           >
             <Text style={styles.exploreIcon}>🎬</Text>
             <Text style={styles.exploreTitle}>Movies & Videos</Text>
@@ -64,6 +66,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={[commonStyles.card, styles.exploreCard]}
             onPress={() => router.push('/(tabs)/merch')}
+            activeOpacity={0.7}
           >
             <Text style={styles.exploreIcon}>👕</Text>
             <Text style={styles.exploreTitle}>Official Merchandise</Text>
@@ -75,11 +78,12 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={[commonStyles.card, styles.exploreCard]}
             onPress={() => router.push('/(tabs)/subscription')}
+            activeOpacity={0.7}
           >
             <Text style={styles.exploreIcon}>⭐</Text>
             <Text style={styles.exploreTitle}>Premium Subscription</Text>
             <Text style={commonStyles.textSecondary}>
-              Get access to all exclusive content
+              Get access to all exclusive content for $19.99
             </Text>
           </TouchableOpacity>
         </View>
@@ -90,8 +94,8 @@ export default function HomeScreen() {
             <Text style={commonStyles.text}>
               Welcome to the official Afroman app! Enjoy free music videos, exclusive content, and shop for official merchandise.
             </Text>
-            <Text style={commonStyles.text}>
-              Login to the Movies tab to unlock exclusive content, or subscribe for full access to all premium features.
+            <Text style={[commonStyles.text, { marginTop: 12 }]}>
+              Subscribe for $19.99 to unlock all exclusive content, or continue as a guest to browse free videos and merchandise.
             </Text>
           </View>
         </View>

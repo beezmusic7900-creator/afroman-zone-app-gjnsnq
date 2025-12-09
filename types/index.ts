@@ -14,9 +14,10 @@ export interface MerchItem {
   name: string;
   description: string;
   price: number;
-  imageUrl: string;
+  imageUrl: any;
   sizes: string[];
   type: 'tshirt' | 'hoodie';
+  color: string;
 }
 
 export interface CartItem {

@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Afroman Zone",
-    "slug": "Afroman Zone",
+    "name": "Official OGAfroman App",
+    "slug": "Official OGAfroman App",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/natively-dark.png",
@@ -44,5 +44,5 @@
       "router": {}
     }
   },
-  "scheme": "Afroman Zone"
+  "scheme": "Official OGAfroman App"
 }
