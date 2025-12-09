@@ -92,14 +92,6 @@ export default function AdminScreen() {
               <Text style={styles.buttonText}>Login</Text>
             </TouchableOpacity>
           </View>
-
-          <View style={styles.infoCard}>
-            <Text style={commonStyles.textSecondary}>
-              Demo credentials:{'\n'}
-              Username: admin{'\n'}
-              Password: afroman2025
-            </Text>
-          </View>
         </ScrollView>
       </View>
     );
@@ -268,9 +260,5 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     fontSize: 16,
     fontWeight: '600',
-  },
-  infoCard: {
-    padding: 16,
-    marginTop: 16,
   },
 });
