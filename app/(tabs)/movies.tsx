@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScrollView, View, Text, Image, TouchableOpacity, StyleSheet, Platform, Alert, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, commonStyles } from '@/styles/commonStyles';
@@ -8,54 +8,61 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function MoviesScreen() {
   const router = useRouter();
-  const { isSubscribed, isGuest, setGuestMode, subscribe } = useAuth();
-  const [showOptions, setShowOptions] = useState(!isGuest && !isSubscribed);
+  const { isSubscribed, isGuest, setGuestMode, setPaymentPending, paymentPending, checkSubscriptionStatus } = useAuth();
+  const [showOptions, setShowOptions] = useState(!isGuest && !isSubscribed && !paymentPending);
+
+  useEffect(() => {
+    checkSubscriptionStatus();
+  }, []);
 
   const handleGuestMode = () => {
     setGuestMode(true);
     setShowOptions(false);
-    Alert.alert('Guest Mode', 'You can browse as a guest. Subscribe to access exclusive content!');
+    Alert.alert(
+      'Guest Mode',
+      'You can browse as a guest and watch free content. To access exclusive content, you must subscribe and complete payment verification.',
+      [{ text: 'OK' }]
+    );
   };
 
   const handleSubscribe = async () => {
     const subscriptionUrl = 'https://buy.stripe.com/7sYdRb1Nj5xCfSlfKd6Na07';
     
-    try {
-      const supported = await Linking.canOpenURL(subscriptionUrl);
-      if (supported) {
-        await Linking.openURL(subscriptionUrl);
-        Alert.alert(
-          'Complete Payment',
-          'After completing payment, return to the app to access exclusive content.',
-          [
-            {
-              text: 'I Completed Payment',
-              onPress: () => {
-                subscribe();
+    Alert.alert(
+      'Important: Complete Payment',
+      'You will be redirected to Stripe to complete your payment. You MUST:\n\n• Complete the entire checkout process\n• Use a valid payment method\n• Finish all payment steps\n\nIf your card is declined or you don\'t finish checkout, you will NOT get access to exclusive content.\n\nAfter successful payment, you will receive a verification code to activate your subscription.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Continue to Payment',
+          onPress: async () => {
+            try {
+              const supported = await Linking.canOpenURL(subscriptionUrl);
+              if (supported) {
+                await setPaymentPending(true);
                 setShowOptions(false);
-                Alert.alert('Success', 'Welcome! You now have access to all exclusive content.');
-              },
-            },
-            {
-              text: 'Cancel',
-              style: 'cancel',
-            },
-          ]
-        );
-      } else {
-        Alert.alert('Error', 'Unable to open subscription link');
-      }
-    } catch (error) {
-      console.log('Error opening subscription link:', error);
-      Alert.alert('Error', 'Unable to open subscription link');
-    }
+                await Linking.openURL(subscriptionUrl);
+              } else {
+                Alert.alert('Error', 'Unable to open payment link. Please try again.');
+              }
+            } catch (error) {
+              console.log('Error opening subscription link:', error);
+              Alert.alert('Error', 'Unable to open payment link. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleVideoPress = (videoId: string, isFree: boolean) => {
     if (!isFree && !isSubscribed) {
       Alert.alert(
         'Subscription Required',
-        'Subscribe for $19.99 to access all exclusive content',
+        'This is exclusive content. You must subscribe and complete payment verification to watch.\n\nSubscription: $19.99 one-time payment',
         [
           {
             text: 'Subscribe Now',
@@ -74,20 +81,37 @@ export default function MoviesScreen() {
 
   const handleExclusiveContentPress = () => {
     if (!isSubscribed) {
-      Alert.alert(
-        'Subscription Required',
-        'Subscribe for $19.99 to access all exclusive content',
-        [
-          {
-            text: 'Subscribe Now',
-            onPress: handleSubscribe,
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-        ]
-      );
+      if (paymentPending) {
+        Alert.alert(
+          'Payment Pending',
+          'You have started the payment process but haven\'t verified your payment yet.\n\nGo to the Subscription tab to enter your verification code, or try payment again if your card was declined or you didn\'t complete checkout.',
+          [
+            {
+              text: 'Go to Subscription',
+              onPress: () => router.push('/(tabs)/subscription'),
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Subscription Required',
+          'Subscribe for $19.99 to access all exclusive content. You must complete the full payment process and verify your payment to get access.',
+          [
+            {
+              text: 'Subscribe Now',
+              onPress: handleSubscribe,
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+          ]
+        );
+      }
     }
   };
 
@@ -107,6 +131,11 @@ export default function MoviesScreen() {
           {isSubscribed && (
             <View style={styles.subscribedBadge}>
               <Text style={styles.subscribedText}>✓ SUBSCRIBED</Text>
+            </View>
+          )}
+          {paymentPending && !isSubscribed && (
+            <View style={styles.pendingBadge}>
+              <Text style={styles.pendingText}>⏳ PAYMENT PENDING</Text>
             </View>
           )}
         </View>
@@ -135,6 +164,30 @@ export default function MoviesScreen() {
               <Text style={styles.guestButtonText}>Continue as Guest</Text>
               <Text style={styles.guestButtonSubtext}>Browse free content only</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {paymentPending && !isSubscribed && (
+          <View style={[commonStyles.card, styles.pendingCard]}>
+            <Text style={styles.pendingCardTitle}>⏳ Complete Your Subscription</Text>
+            <Text style={commonStyles.textSecondary}>
+              You started the payment process. To access exclusive content, you must:
+            </Text>
+            <Text style={styles.pendingStep}>1. Complete payment on Stripe</Text>
+            <Text style={styles.pendingStep}>2. Get your verification code</Text>
+            <Text style={styles.pendingStep}>3. Enter the code in the Subscription tab</Text>
+            
+            <TouchableOpacity
+              style={styles.verifyButton}
+              onPress={() => router.push('/(tabs)/subscription')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.buttonText}>Enter Verification Code</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.warningText}>
+              ⚠️ If your card was declined or you didn&apos;t finish checkout, you need to try payment again.
+            </Text>
           </View>
         )}
 
@@ -176,20 +229,24 @@ export default function MoviesScreen() {
             <View style={styles.exclusiveContent}>
               <Text style={styles.lockIcon}>🔒</Text>
               <Text style={styles.exclusiveTitle}>
-                {isSubscribed ? 'Coming Soon!' : 'Subscribe to Unlock'}
+                {isSubscribed ? 'Coming Soon!' : paymentPending ? 'Verify Payment to Unlock' : 'Subscribe to Unlock'}
               </Text>
               <Text style={commonStyles.textSecondary}>
                 {isSubscribed 
                   ? 'Exclusive content will be added by the admin'
+                  : paymentPending
+                  ? 'Complete payment verification to access exclusive content'
                   : 'Get access to exclusive movies, behind-the-scenes content, and more for just $19.99'}
               </Text>
               {!isSubscribed && (
                 <TouchableOpacity
                   style={styles.unlockButton}
-                  onPress={handleSubscribe}
+                  onPress={paymentPending ? () => router.push('/(tabs)/subscription') : handleSubscribe}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.buttonText}>Subscribe Now - $19.99</Text>
+                  <Text style={styles.buttonText}>
+                    {paymentPending ? 'Verify Payment' : 'Subscribe Now - $19.99'}
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -210,7 +267,9 @@ export default function MoviesScreen() {
                 {!isSubscribed && (
                   <View style={styles.lockOverlay}>
                     <Text style={styles.lockIcon}>🔒</Text>
-                    <Text style={styles.lockText}>Subscribe to Watch</Text>
+                    <Text style={styles.lockText}>
+                      {paymentPending ? 'Verify Payment' : 'Subscribe to Watch'}
+                    </Text>
                   </View>
                 )}
               </View>
@@ -259,6 +318,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
+  pendingBadge: {
+    marginTop: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: colors.accent,
+  },
+  pendingText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000000',
+  },
   optionsTitle: {
     fontSize: 24,
     fontWeight: '700',
@@ -303,6 +374,37 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 12,
     marginTop: 4,
+  },
+  pendingCard: {
+    backgroundColor: colors.card,
+    borderWidth: 2,
+    borderColor: colors.accent,
+  },
+  pendingCardTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  pendingStep: {
+    fontSize: 14,
+    color: colors.text,
+    marginTop: 8,
+    marginLeft: 8,
+  },
+  verifyButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  warningText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 12,
+    textAlign: 'center',
   },
   section: {
     marginBottom: 24,
