@@ -37,7 +37,7 @@ export const merchandise: MerchItem[] = [
     name: 'Afroman Official Hoodie - White',
     description: 'Comfortable and stylish hoodie with official Afroman branding',
     price: 49.99,
-    imageUrl: require('@/assets/images/0b1b0006-dfc8-4ff3-b7d5-72058a084143.png'),
+    imageUrl: require('@/assets/images/b3ad6fba-39e9-460f-8e13-34529f70d0af.png'),
     sizes: ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'],
     type: 'hoodie',
     color: 'White',
