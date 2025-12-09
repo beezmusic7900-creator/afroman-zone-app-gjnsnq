@@ -17,7 +17,7 @@ export const merchandise: MerchItem[] = [
     name: 'Afroman Official T-Shirt - White',
     description: 'Premium quality cotton t-shirt with official Afroman logo',
     price: 39.99,
-    imageUrl: require('@/assets/images/9957216d-aaad-4d60-b360-5fbe38a62452.png'),
+    imageUrl: require('@/assets/images/a61bc566-5ba4-4b73-ae79-f011a3d768f1.png'),
     sizes: ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'],
     type: 'tshirt',
     color: 'White',
