@@ -57,7 +57,7 @@ export default function AdminScreen() {
         >
           <View style={styles.header}>
             <Image
-              source={{ uri: 'https://prod-finalquest-user-projects-storage-bucket-aws.s3.amazonaws.com/user-projects/92c958b2-61a2-43c5-97d3-cb274fd3249a/assets/images/01425c73-5574-4e49-90ea-0ea6fcacd8b0.jpeg?AWSAccessKeyId=AKIAVRUVRKQJC5DISQ4Q&Signature=e9zghH%2BSbbZfxnYqq%2FqwMO1ohf0%3D&Expires=1765327380' }}
+              source={require('@/assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png')}
               style={commonStyles.logoSmall}
             />
             <Text style={commonStyles.title}>Admin Login</Text>
@@ -88,7 +88,7 @@ export default function AdminScreen() {
               autoCapitalize="none"
             />
 
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            <TouchableOpacity style={styles.loginButton} onPress={handleLogin} activeOpacity={0.7}>
               <Text style={styles.buttonText}>Login</Text>
             </TouchableOpacity>
           </View>
@@ -114,7 +114,7 @@ export default function AdminScreen() {
       >
         <View style={styles.header}>
           <Image
-            source={{ uri: 'https://prod-finalquest-user-projects-storage-bucket-aws.s3.amazonaws.com/user-projects/92c958b2-61a2-43c5-97d3-cb274fd3249a/assets/images/01425c73-5574-4e49-90ea-0ea6fcacd8b0.jpeg?AWSAccessKeyId=AKIAVRUVRKQJC5DISQ4Q&Signature=e9zghH%2BSbbZfxnYqq%2FqwMO1ohf0%3D&Expires=1765327380' }}
+            source={require('@/assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png')}
             style={commonStyles.logoSmall}
           />
           <Text style={commonStyles.title}>Admin Dashboard</Text>
@@ -166,7 +166,7 @@ export default function AdminScreen() {
             autoCapitalize="none"
           />
 
-          <TouchableOpacity style={styles.uploadButton} onPress={handleUpload}>
+          <TouchableOpacity style={styles.uploadButton} onPress={handleUpload} activeOpacity={0.7}>
             <Text style={styles.buttonText}>Upload Video</Text>
           </TouchableOpacity>
         </View>
@@ -178,7 +178,7 @@ export default function AdminScreen() {
           </Text>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+        <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.7}>
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>

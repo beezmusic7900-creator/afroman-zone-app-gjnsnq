@@ -17,7 +17,7 @@ export default function HomeScreen() {
       >
         <View style={styles.header}>
           <Image
-            source={require('@/assets/images/final_quest_240x240.png')}
+            source={require('@/assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png')}
             style={commonStyles.logo}
           />
           <Text style={commonStyles.title}>AFROMAN</Text>

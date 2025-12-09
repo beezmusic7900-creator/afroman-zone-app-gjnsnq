@@ -55,7 +55,7 @@ export default function MerchScreen() {
       >
         <View style={styles.header}>
           <Image
-            source={require('@/assets/images/final_quest_240x240.png')}
+            source={require('@/assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png')}
             style={commonStyles.logoSmall}
           />
           <Text style={commonStyles.title}>Official Merchandise</Text>

@@ -28,7 +28,7 @@ export default function CartScreen() {
       <View style={styles.container}>
         <View style={styles.emptyContainer}>
           <Image
-            source={{ uri: 'https://prod-finalquest-user-projects-storage-bucket-aws.s3.amazonaws.com/user-projects/92c958b2-61a2-43c5-97d3-cb274fd3249a/assets/images/01425c73-5574-4e49-90ea-0ea6fcacd8b0.jpeg?AWSAccessKeyId=AKIAVRUVRKQJC5DISQ4Q&Signature=e9zghH%2BSbbZfxnYqq%2FqwMO1ohf0%3D&Expires=1765327380' }}
+            source={require('@/assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png')}
             style={commonStyles.logoSmall}
           />
           <Text style={commonStyles.title}>Your Cart is Empty</Text>
@@ -49,7 +49,7 @@ export default function CartScreen() {
       >
         <View style={styles.header}>
           <Image
-            source={{ uri: 'https://prod-finalquest-user-projects-storage-bucket-aws.s3.amazonaws.com/user-projects/92c958b2-61a2-43c5-97d3-cb274fd3249a/assets/images/01425c73-5574-4e49-90ea-0ea6fcacd8b0.jpeg?AWSAccessKeyId=AKIAVRUVRKQJC5DISQ4Q&Signature=e9zghH%2BSbbZfxnYqq%2FqwMO1ohf0%3D&Expires=1765327380' }}
+            source={require('@/assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png')}
             style={commonStyles.logoSmall}
           />
           <Text style={commonStyles.title}>Shopping Cart</Text>
@@ -59,7 +59,7 @@ export default function CartScreen() {
           <View key={`${item.merchItem.id}-${item.size}-${index}`} style={commonStyles.card}>
             <View style={styles.cartItem}>
               <Image
-                source={{ uri: item.merchItem.imageUrl }}
+                source={item.merchItem.imageUrl}
                 style={styles.cartItemImage}
               />
               <View style={styles.cartItemInfo}>
@@ -75,6 +75,7 @@ export default function CartScreen() {
                     onPress={() =>
                       updateQuantity(item.merchItem.id, item.size, item.quantity - 1)
                     }
+                    activeOpacity={0.7}
                   >
                     <Text style={styles.quantityButtonText}>-</Text>
                   </TouchableOpacity>
@@ -84,6 +85,7 @@ export default function CartScreen() {
                     onPress={() =>
                       updateQuantity(item.merchItem.id, item.size, item.quantity + 1)
                     }
+                    activeOpacity={0.7}
                   >
                     <Text style={styles.quantityButtonText}>+</Text>
                   </TouchableOpacity>
@@ -92,6 +94,7 @@ export default function CartScreen() {
                 <TouchableOpacity
                   style={styles.removeButton}
                   onPress={() => removeFromCart(item.merchItem.id, item.size)}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.removeButtonText}>Remove</Text>
                 </TouchableOpacity>
@@ -105,11 +108,11 @@ export default function CartScreen() {
           <Text style={styles.totalPrice}>${getTotalPrice().toFixed(2)}</Text>
         </View>
 
-        <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout}>
+        <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout} activeOpacity={0.7}>
           <Text style={styles.buttonText}>Proceed to Checkout</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.clearButton} onPress={clearCart}>
+        <TouchableOpacity style={styles.clearButton} onPress={clearCart} activeOpacity={0.7}>
           <Text style={styles.clearButtonText}>Clear Cart</Text>
         </TouchableOpacity>
 
