@@ -14,13 +14,13 @@ export default function TabLayout() {
         <Icon sf="house.fill" />
         <Label>Home</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger key="movies" name="movies">
+        <Icon sf="film.fill" />
+        <Label>Movies</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger key="merch" name="merch">
         <Icon sf="bag.fill" />
         <Label>Merch</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger key="subscription" name="subscription">
-        <Icon sf="star.fill" />
-        <Label>Subscribe</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger key="cart" name="cart">
         <Icon sf="cart.fill" />

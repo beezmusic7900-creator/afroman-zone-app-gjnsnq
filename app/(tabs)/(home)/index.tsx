@@ -25,8 +25,8 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Free Music Videos</Text>
-          {freeVideos.map((video) => (
+          <Text style={styles.sectionTitle}>Featured Music Videos</Text>
+          {freeVideos.slice(0, 2).map((video) => (
             <TouchableOpacity
               key={video.id}
               style={commonStyles.card}
@@ -48,26 +48,51 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>New Releases</Text>
-          <View style={commonStyles.card}>
-            <Text style={commonStyles.text}>
-              Check back soon for new music and exclusive content!
+          <Text style={styles.sectionTitle}>Explore</Text>
+          
+          <TouchableOpacity
+            style={[commonStyles.card, styles.exploreCard]}
+            onPress={() => router.push('/(tabs)/movies')}
+          >
+            <Text style={styles.exploreIcon}>🎬</Text>
+            <Text style={styles.exploreTitle}>Movies & Videos</Text>
+            <Text style={commonStyles.textSecondary}>
+              Watch exclusive content and music videos
             </Text>
-          </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[commonStyles.card, styles.exploreCard]}
+            onPress={() => router.push('/(tabs)/merch')}
+          >
+            <Text style={styles.exploreIcon}>👕</Text>
+            <Text style={styles.exploreTitle}>Official Merchandise</Text>
+            <Text style={commonStyles.textSecondary}>
+              Shop t-shirts, hoodies, and more
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[commonStyles.card, styles.exploreCard]}
+            onPress={() => router.push('/(tabs)/subscription')}
+          >
+            <Text style={styles.exploreIcon}>⭐</Text>
+            <Text style={styles.exploreTitle}>Premium Subscription</Text>
+            <Text style={commonStyles.textSecondary}>
+              Get access to all exclusive content
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Exclusive Content</Text>
+          <Text style={styles.sectionTitle}>About</Text>
           <View style={commonStyles.card}>
             <Text style={commonStyles.text}>
-              Subscribe to access exclusive videos, behind-the-scenes content, and more!
+              Welcome to the official Afroman app! Enjoy free music videos, exclusive content, and shop for official merchandise.
             </Text>
-            <TouchableOpacity
-              style={styles.subscribeButton}
-              onPress={() => router.push('/(tabs)/subscription')}
-            >
-              <Text style={styles.buttonText}>Subscribe Now</Text>
-            </TouchableOpacity>
+            <Text style={commonStyles.text}>
+              Login to the Movies tab to unlock exclusive content, or subscribe for full access to all premium features.
+            </Text>
           </View>
         </View>
       </ScrollView>
@@ -122,17 +147,17 @@ const styles = StyleSheet.create({
     color: colors.primary,
     marginTop: 4,
   },
-  subscribeButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+  exploreCard: {
     alignItems: 'center',
-    marginTop: 12,
   },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  exploreIcon: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  exploreTitle: {
+    fontSize: 18,
     fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
   },
 });

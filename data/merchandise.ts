@@ -20,22 +20,4 @@ export const merchandise: MerchItem[] = [
     sizes: ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'],
     type: 'hoodie',
   },
-  {
-    id: 'tshirt-2',
-    name: 'Because I Got High T-Shirt',
-    description: 'Limited edition t-shirt featuring iconic lyrics',
-    price: 39.99,
-    imageUrl: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800',
-    sizes: ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'],
-    type: 'tshirt',
-  },
-  {
-    id: 'hoodie-2',
-    name: 'Crazy Rap Hoodie',
-    description: 'Premium hoodie with exclusive Crazy Rap design',
-    price: 49.99,
-    imageUrl: 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=800',
-    sizes: ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'],
-    type: 'hoodie',
-  },
 ];

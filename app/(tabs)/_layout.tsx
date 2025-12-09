@@ -13,16 +13,16 @@ export default function TabLayout() {
       label: 'Home',
     },
     {
+      name: 'movies',
+      route: '/(tabs)/movies',
+      icon: 'film',
+      label: 'Movies',
+    },
+    {
       name: 'merch',
       route: '/(tabs)/merch',
       icon: 'shopping-bag',
       label: 'Merch',
-    },
-    {
-      name: 'subscription',
-      route: '/(tabs)/subscription',
-      icon: 'star',
-      label: 'Subscribe',
     },
     {
       name: 'cart',
@@ -47,6 +47,7 @@ export default function TabLayout() {
         }}
       >
         <Stack.Screen key="home" name="(home)" />
+        <Stack.Screen key="movies" name="movies" />
         <Stack.Screen key="merch" name="merch" />
         <Stack.Screen key="subscription" name="subscription" />
         <Stack.Screen key="cart" name="cart" />

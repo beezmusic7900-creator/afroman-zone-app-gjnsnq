@@ -2,13 +2,13 @@
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 
 export const colors = {
-  background: '#F5F5DC',
-  text: '#000000',
-  textSecondary: '#555555',
+  background: '#000000',
+  text: '#FFFFFF',
+  textSecondary: '#AAAAAA',
   primary: '#008000',
   secondary: '#800080',
   accent: '#FFD700',
-  card: '#FFFFFF',
+  card: '#1A1A1A',
   highlight: '#ADD8E6',
 };
 
@@ -102,7 +102,7 @@ export const commonStyles = StyleSheet.create({
     padding: 16,
     marginVertical: 8,
     width: '100%',
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.3)',
     elevation: 3,
   },
   logo: {
