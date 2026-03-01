@@ -4,11 +4,14 @@ export interface Video {
   title: string;
   description: string;
   thumbnailUrl: string;
-  videoUrl: string;
+  videoUrl?: string;
+  audioUrl?: string;
   isFree: boolean;
   duration?: string;
   price?: number;
   isExclusive?: boolean;
+  type?: 'video' | 'audio';
+  fileName?: string;
 }
 
 export interface MerchItem {
@@ -33,27 +36,32 @@ export interface AdminContent {
   title: string;
   description: string;
   videoUrl?: string;
+  audioUrl?: string;
   thumbnailUrl?: string;
   isExclusive?: boolean;
   uploadDate: string;
-  type: 'video' | 'merch';
+  type: 'video' | 'audio' | 'merch';
   price?: number;
   imageUrl?: string;
   sizes?: string[];
   merchType?: string;
   color?: string;
+  fileName?: string;
 }
 
 export interface AdminVideo {
   id: string;
   title: string;
   description: string;
-  videoUrl: string;
+  videoUrl?: string;
+  audioUrl?: string;
   thumbnailUrl: string;
   isExclusive: boolean;
   price?: number;
   uploadedAt: string;
   uploadedBy: string;
+  type: 'video' | 'audio';
+  fileName?: string;
 }
 
 export interface AdminMerchandise {
@@ -71,7 +79,7 @@ export interface AdminMerchandise {
 export interface PurchasedContent {
   id: string;
   contentId: string;
-  contentType: 'video' | 'song';
+  contentType: 'video' | 'song' | 'audio';
   title: string;
   purchaseDate: string;
   price: number;
