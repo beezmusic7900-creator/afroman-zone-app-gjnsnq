@@ -19,6 +19,7 @@ export default function HomeScreen() {
           <Image
             source={require('@/assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png')}
             style={commonStyles.logo}
+            resizeMode="contain"
           />
           <Text style={commonStyles.title}>AFROMAN</Text>
           <Text style={commonStyles.textSecondary}>Official App</Text>
@@ -36,6 +37,7 @@ export default function HomeScreen() {
               <Image
                 source={{ uri: video.thumbnailUrl }}
                 style={styles.thumbnail}
+                resizeMode="cover"
               />
               <View style={styles.videoInfo}>
                 <Text style={styles.videoTitle}>{video.title}</Text>

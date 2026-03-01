@@ -1,10 +1,10 @@
 
 import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
-import { IconSymbol } from '@/components/IconSymbol';
-import { colors } from '@/styles/commonStyles';
 import { useCart } from '@/contexts/CartContext';
+import { IconSymbol } from '@/components/IconSymbol';
+import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
+import { colors } from '@/styles/commonStyles';
 
 export interface TabBarItem {
   name: string;
@@ -18,28 +18,27 @@ interface FloatingTabBarProps {
 }
 
 export default function FloatingTabBar({ tabs }: FloatingTabBarProps) {
+  const { getTotalItems } = useCart();
   const router = useRouter();
   const pathname = usePathname();
-  const { getTotalItems } = useCart();
-  const cartItemCount = getTotalItems();
 
   const isActive = (route: string) => {
     if (route === '/(tabs)/(home)/') {
-      return pathname === '/' || pathname.startsWith('/(tabs)/(home)');
+      return pathname === '/' || pathname === '/(tabs)/(home)/' || pathname.startsWith('/(tabs)/(home)');
     }
-    return pathname.startsWith(route);
+    return pathname.includes(route);
   };
 
   const getIconName = (icon: string, active: boolean) => {
-    const iconMap: { [key: string]: { ios: string; android: string } } = {
-      home: { ios: active ? 'house.fill' : 'house', android: 'home' },
-      'shopping-bag': { ios: active ? 'bag.fill' : 'bag', android: 'shopping_bag' },
-      star: { ios: active ? 'star.fill' : 'star', android: 'star' },
-      'shopping-cart': { ios: active ? 'cart.fill' : 'cart', android: 'shopping_cart' },
-      lock: { ios: active ? 'lock.fill' : 'lock', android: 'lock' },
+    const iconMap: { [key: string]: { default: string; active: string } } = {
+      'home': { default: 'home', active: 'home' },
+      'movie': { default: 'movie', active: 'movie' },
+      'shopping-bag': { default: 'shopping-bag', active: 'shopping-bag' },
+      'shopping-cart': { default: 'shopping-cart', active: 'shopping-cart' },
+      'lock': { default: 'lock', active: 'lock' },
     };
 
-    return iconMap[icon] || { ios: icon, android: icon };
+    return iconMap[icon]?.[active ? 'active' : 'default'] || icon;
   };
 
   return (
@@ -47,20 +46,21 @@ export default function FloatingTabBar({ tabs }: FloatingTabBarProps) {
       <View style={styles.tabBar}>
         {tabs.map((tab) => {
           const active = isActive(tab.route);
-          const iconNames = getIconName(tab.icon, active);
+          const cartItemCount = getTotalItems();
 
           return (
             <TouchableOpacity
               key={tab.name}
               style={styles.tab}
               onPress={() => router.push(tab.route as any)}
+              activeOpacity={0.7}
             >
               <View style={styles.iconContainer}>
                 <IconSymbol
-                  ios_icon_name={iconNames.ios}
-                  android_material_icon_name={iconNames.android}
+                  ios_icon_name={tab.icon}
+                  android_material_icon_name={getIconName(tab.icon, active)}
                   size={24}
-                  color={active ? colors.primary : colors.text}
+                  color={active ? colors.primary : colors.textSecondary}
                 />
                 {tab.name === 'cart' && cartItemCount > 0 && (
                   <View style={styles.badge}>
@@ -68,7 +68,7 @@ export default function FloatingTabBar({ tabs }: FloatingTabBarProps) {
                   </View>
                 )}
               </View>
-              <Text style={[styles.label, active && styles.labelActive]}>
+              <Text style={[styles.label, active && styles.activeLabel]}>
                 {tab.label}
               </Text>
             </TouchableOpacity>
@@ -86,17 +86,21 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingBottom: Platform.OS === 'ios' ? 20 : 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    paddingTop: 10,
     backgroundColor: 'transparent',
     pointerEvents: 'box-none',
   },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: colors.card,
-    borderRadius: 24,
-    paddingVertical: 8,
+    borderRadius: 25,
+    paddingVertical: 12,
     paddingHorizontal: 8,
-    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
     elevation: 8,
   },
   tab: {
@@ -108,30 +112,30 @@ const styles = StyleSheet.create({
   iconContainer: {
     position: 'relative',
   },
-  label: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.text,
-    marginTop: 4,
-  },
-  labelActive: {
-    color: colors.primary,
-  },
   badge: {
     position: 'absolute',
-    top: -6,
-    right: -10,
-    backgroundColor: colors.secondary,
+    top: -8,
+    right: -12,
+    backgroundColor: colors.accent,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 4,
   },
   badgeText: {
-    color: '#FFFFFF',
+    color: colors.background,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  label: {
     fontSize: 11,
-    fontWeight: '700',
+    marginTop: 4,
+    color: colors.textSecondary,
+  },
+  activeLabel: {
+    color: colors.primary,
+    fontWeight: '600',
   },
 });

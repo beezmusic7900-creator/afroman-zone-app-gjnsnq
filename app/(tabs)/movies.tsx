@@ -113,6 +113,7 @@ export default function MoviesScreen() {
           <Image
             source={require('@/assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png')}
             style={commonStyles.logoSmall}
+            resizeMode="contain"
           />
           <Text style={commonStyles.title}>Videos & Music</Text>
           <Text style={commonStyles.textSecondary}>
@@ -136,6 +137,7 @@ export default function MoviesScreen() {
               <Image
                 source={{ uri: video.thumbnailUrl }}
                 style={styles.thumbnail}
+                resizeMode="cover"
               />
               <View style={styles.videoInfo}>
                 <Text style={styles.videoTitle}>{video.title}</Text>
@@ -179,6 +181,7 @@ export default function MoviesScreen() {
                   <Image
                     source={{ uri: video.thumbnailUrl }}
                     style={styles.thumbnail}
+                    resizeMode="cover"
                   />
                   {!hasAccess && (
                     <View style={styles.lockOverlay}>

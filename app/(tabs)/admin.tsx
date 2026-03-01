@@ -263,6 +263,7 @@ export default function AdminScreen() {
             <Image
               source={require('@/assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png')}
               style={commonStyles.logoSmall}
+              resizeMode="contain"
             />
             <Text style={commonStyles.title}>Content Management Login</Text>
             <Text style={commonStyles.textSecondary}>
@@ -339,6 +340,7 @@ export default function AdminScreen() {
           <Image
             source={require('@/assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png')}
             style={commonStyles.logoSmall}
+            resizeMode="contain"
           />
           <Text style={commonStyles.title}>
             {userRole}

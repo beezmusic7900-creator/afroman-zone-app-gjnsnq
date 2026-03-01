@@ -11,6 +11,7 @@ export default function MerchScreen() {
   const [selectedSizes, setSelectedSizes] = useState<{ [key: string]: string }>({});
 
   const handleAddToCart = (item: MerchItem) => {
+    console.log('User tapped Add to Cart for:', item.name);
     const selectedSize = selectedSizes[item.id];
     if (!selectedSize) {
       Alert.alert('Select Size', 'Please select a size before adding to cart');
@@ -21,10 +22,12 @@ export default function MerchScreen() {
   };
 
   const handleSelectSize = (itemId: string, size: string) => {
+    console.log('User selected size:', size, 'for item:', itemId);
     setSelectedSizes((prev) => ({ ...prev, [itemId]: size }));
   };
 
   const handleBuyNow = async (item: MerchItem) => {
+    console.log('User tapped Buy Now for:', item.name);
     const selectedSize = selectedSizes[item.id];
     if (!selectedSize) {
       Alert.alert('Select Size', 'Please select a size before purchasing');
@@ -57,13 +60,18 @@ export default function MerchScreen() {
           <Image
             source={require('@/assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png')}
             style={commonStyles.logoSmall}
+            resizeMode="contain"
           />
           <Text style={commonStyles.title}>Official Merchandise</Text>
         </View>
 
         {merchandise.map((item) => (
           <View key={item.id} style={commonStyles.card}>
-            <Image source={item.imageUrl} style={styles.productImage} />
+            <Image 
+              source={item.imageUrl} 
+              style={styles.productImage}
+              resizeMode="contain"
+            />
             <Text style={styles.productName}>{item.name}</Text>
             <Text style={commonStyles.textSecondary}>{item.description}</Text>
             <Text style={styles.price}>${item.price.toFixed(2)}</Text>
@@ -147,7 +155,6 @@ const styles = StyleSheet.create({
     height: 250,
     borderRadius: 8,
     marginBottom: 12,
-    resizeMode: 'contain',
   },
   productName: {
     fontSize: 20,

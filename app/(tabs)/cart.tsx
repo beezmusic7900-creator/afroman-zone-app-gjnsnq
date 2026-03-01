@@ -8,6 +8,7 @@ export default function CartScreen() {
   const { cartItems, removeFromCart, updateQuantity, getTotalPrice, clearCart } = useCart();
 
   const handleCheckout = async () => {
+    console.log('User tapped checkout button');
     if (cartItems.length === 0) {
       Alert.alert('Empty Cart', 'Please add items to your cart before checking out');
       return;
@@ -30,6 +31,7 @@ export default function CartScreen() {
           <Image
             source={require('@/assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png')}
             style={commonStyles.logoSmall}
+            resizeMode="contain"
           />
           <Text style={commonStyles.title}>Your Cart is Empty</Text>
           <Text style={commonStyles.textSecondary}>
@@ -51,6 +53,7 @@ export default function CartScreen() {
           <Image
             source={require('@/assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png')}
             style={commonStyles.logoSmall}
+            resizeMode="contain"
           />
           <Text style={commonStyles.title}>Shopping Cart</Text>
         </View>
@@ -61,6 +64,7 @@ export default function CartScreen() {
               <Image
                 source={item.merchItem.imageUrl}
                 style={styles.cartItemImage}
+                resizeMode="contain"
               />
               <View style={styles.cartItemInfo}>
                 <Text style={styles.cartItemName}>{item.merchItem.name}</Text>

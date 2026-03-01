@@ -15,7 +15,7 @@ export default function TabLayout() {
     {
       name: 'movies',
       route: '/(tabs)/movies',
-      icon: 'film',
+      icon: 'movie',
       label: 'Movies',
     },
     {
@@ -52,6 +52,7 @@ export default function TabLayout() {
         <Stack.Screen key="subscription" name="subscription" />
         <Stack.Screen key="cart" name="cart" />
         <Stack.Screen key="admin" name="admin" />
+        <Stack.Screen key="profile" name="profile" />
       </Stack>
       <FloatingTabBar tabs={tabs} />
     </>

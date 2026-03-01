@@ -12,6 +12,7 @@ export default function SubscriptionScreen() {
   const handleSubscribe = async () => {
     const subscriptionUrl = 'https://buy.stripe.com/7sYdRb1Nj5xCfSlfKd6Na07';
     
+    console.log('User initiating subscription');
     Alert.alert(
       'Important: Complete Payment',
       'You will be redirected to Stripe to complete your payment. You MUST complete the entire checkout process to access exclusive content.\n\nAfter successful payment, you will receive a verification code. Return to this screen and enter the code to activate your subscription.',
@@ -47,6 +48,7 @@ export default function SubscriptionScreen() {
       return;
     }
 
+    console.log('User verifying payment with code:', verificationCode);
     setIsVerifying(true);
     
     const isValid = await verifyPayment(verificationCode);
@@ -80,6 +82,7 @@ export default function SubscriptionScreen() {
           <Image
             source={require('@/assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png')}
             style={commonStyles.logoSmall}
+            resizeMode="contain"
           />
           <Text style={commonStyles.title}>Premium Subscription</Text>
           {isSubscribed && (
