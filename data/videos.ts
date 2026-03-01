@@ -22,4 +22,5 @@ export const freeVideos: Video[] = [
   },
 ];
 
+// Empty array - admin will add exclusive content through the admin panel
 export const premiumVideos: Video[] = [];

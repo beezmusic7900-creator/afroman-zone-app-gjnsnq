@@ -14,6 +14,18 @@ export default function MoviesScreen() {
   
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
+  const [exclusiveVideos, setExclusiveVideos] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadExclusiveContent();
+  }, []);
+
+  const loadExclusiveContent = async () => {
+    // TODO: Backend Integration - GET /api/videos/exclusive → [{ id, title, description, thumbnailUrl, videoUrl, price, isExclusive }]
+    // For now, load from premiumVideos (which admin can populate)
+    setExclusiveVideos(premiumVideos);
+    console.log('Loaded exclusive content:', premiumVideos.length, 'items');
+  };
 
   const handleGuestMode = () => {
     console.log('User entering guest mode');
@@ -58,49 +70,33 @@ export default function MoviesScreen() {
 
     console.log('Processing purchase for:', selectedVideo.title);
     
-    // TODO: Backend Integration - POST /api/purchases with { contentId, contentType: 'video', price } → { purchaseId, paymentUrl }
-    // For now, redirect to Stripe payment link
-    const paymentUrl = 'https://buy.stripe.com/6oU3cx77D1hmcG92Xr6Na02';
+    // Redirect to the new Stripe payment link for exclusive content
+    const exclusiveContentPaymentUrl = 'https://buy.stripe.com/00w9AV0Jf8JO9tX41v6Na0d';
     
     setShowPurchaseModal(false);
-    await Linking.openURL(paymentUrl);
     
-    // After successful payment, add to purchased content
-    // In production, this would be confirmed by the backend after payment
+    console.log('Redirecting to Stripe payment:', exclusiveContentPaymentUrl);
+    await Linking.openURL(exclusiveContentPaymentUrl);
+    
+    // After successful payment, the content will be available
+    // In production, this would be confirmed by the backend after payment verification
+    // For now, we'll add it to purchased content (user would need to verify payment)
+    // TODO: Backend Integration - POST /api/purchases with { contentId, contentType: 'video', price } → { purchaseId, success }
+    // TODO: Backend Integration - Webhook from Stripe to verify payment and unlock content
+    
+    // Simulate purchase completion (in production, this happens after webhook confirmation)
     await addPurchase({
       id: Date.now().toString(),
       contentId: selectedVideo.id,
       contentType: 'video',
       title: selectedVideo.title,
       purchaseDate: new Date().toISOString(),
-      price: selectedVideo.price,
+      price: selectedVideo.price || 0,
     });
   };
 
-  // Mock exclusive videos with prices (in production, this comes from backend)
-  // TODO: Backend Integration - GET /api/videos/exclusive → [{ id, title, description, thumbnailUrl, videoUrl, price, isExclusive }]
-  const exclusiveVideos = [
-    {
-      id: '3',
-      title: 'Exclusive Track 1',
-      description: 'Brand new exclusive song',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=800',
-      videoUrl: 'https://www.youtube.com/embed/example1',
-      isFree: false,
-      price: 9.99,
-      isExclusive: true,
-    },
-    {
-      id: '4',
-      title: 'Behind The Scenes',
-      description: 'Exclusive behind the scenes footage',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800',
-      videoUrl: 'https://www.youtube.com/embed/example2',
-      isFree: false,
-      price: 14.99,
-      isExclusive: true,
-    },
-  ];
+  const freeVideosDisplay = freeVideos;
+  const exclusiveVideosDisplay = exclusiveVideos;
 
   return (
     <View style={styles.container}>
@@ -127,7 +123,7 @@ export default function MoviesScreen() {
           <Text style={styles.sectionSubtitle}>
             Watch these videos for free
           </Text>
-          {freeVideos.map((video) => (
+          {freeVideosDisplay.map((video) => (
             <TouchableOpacity
               key={video.id}
               style={styles.videoCard}
@@ -154,58 +150,70 @@ export default function MoviesScreen() {
         </View>
 
         {/* Exclusive Purchasable Content */}
-        <View style={commonStyles.card}>
-          <Text style={styles.sectionTitle}>Exclusive Releases</Text>
-          <Text style={styles.sectionSubtitle}>
-            Purchase to unlock exclusive content
-          </Text>
-          {exclusiveVideos.map((video) => {
-            const isContentPurchased = isPurchased(video.id);
-            const hasAccess = isSubscribed || isContentPurchased;
-            const priceDisplay = `$${video.price?.toFixed(2)}`;
-            
-            return (
-              <TouchableOpacity
-                key={video.id}
-                style={styles.videoCard}
-                onPress={() => {
-                  if (hasAccess) {
-                    handleVideoPress(video.id, false, true);
-                  } else {
-                    handlePurchaseVideo(video);
-                  }
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={styles.thumbnailContainer}>
-                  <Image
-                    source={{ uri: video.thumbnailUrl }}
-                    style={styles.thumbnail}
-                    resizeMode="cover"
-                  />
-                  {!hasAccess && (
-                    <View style={styles.lockOverlay}>
-                      <Text style={styles.lockIcon}>🔒</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.videoInfo}>
-                  <Text style={styles.videoTitle}>{video.title}</Text>
-                  <Text style={styles.videoDescription}>{video.description}</Text>
-                  <View style={styles.videoMeta}>
-                    {hasAccess ? (
-                      <Text style={styles.purchasedTag}>
-                        {isContentPurchased ? 'PURCHASED' : 'SUBSCRIBED'}
-                      </Text>
-                    ) : (
-                      <Text style={styles.priceTag}>{priceDisplay}</Text>
+        {exclusiveVideosDisplay.length > 0 && (
+          <View style={commonStyles.card}>
+            <Text style={styles.sectionTitle}>Exclusive Releases</Text>
+            <Text style={styles.sectionSubtitle}>
+              Purchase to unlock exclusive content
+            </Text>
+            {exclusiveVideosDisplay.map((video) => {
+              const isContentPurchased = isPurchased(video.id);
+              const hasAccess = isSubscribed || isContentPurchased;
+              const priceDisplay = `$${video.price?.toFixed(2) || '0.00'}`;
+              
+              return (
+                <TouchableOpacity
+                  key={video.id}
+                  style={styles.videoCard}
+                  onPress={() => {
+                    if (hasAccess) {
+                      handleVideoPress(video.id, false, true);
+                    } else {
+                      handlePurchaseVideo(video);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.thumbnailContainer}>
+                    <Image
+                      source={{ uri: video.thumbnailUrl }}
+                      style={styles.thumbnail}
+                      resizeMode="cover"
+                    />
+                    {!hasAccess && (
+                      <View style={styles.lockOverlay}>
+                        <Text style={styles.lockIcon}>🔒</Text>
+                      </View>
                     )}
                   </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                  <View style={styles.videoInfo}>
+                    <Text style={styles.videoTitle}>{video.title}</Text>
+                    <Text style={styles.videoDescription}>{video.description}</Text>
+                    <View style={styles.videoMeta}>
+                      {hasAccess ? (
+                        <Text style={styles.purchasedTag}>
+                          {isContentPurchased ? 'PURCHASED' : 'SUBSCRIBED'}
+                        </Text>
+                      ) : (
+                        <Text style={styles.priceTag}>{priceDisplay}</Text>
+                      )}
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Empty state when no exclusive content */}
+        {exclusiveVideosDisplay.length === 0 && (
+          <View style={commonStyles.card}>
+            <Text style={styles.sectionTitle}>Exclusive Releases</Text>
+            <Text style={styles.emptyStateText}>
+              No exclusive content available yet. Check back soon for new releases!
+            </Text>
+          </View>
+        )}
 
         {/* Subscription Section */}
         {!isSubscribed && (
@@ -247,10 +255,10 @@ export default function MoviesScreen() {
                   {selectedVideo.title}
                 </Text>
                 <Text style={styles.modalPrice}>
-                  ${selectedVideo.price?.toFixed(2)}
+                  ${selectedVideo.price?.toFixed(2) || '0.00'}
                 </Text>
                 <Text style={styles.modalDescription}>
-                  Get lifetime access to this exclusive content
+                  Get lifetime access to this exclusive content. After completing payment, the content will be instantly available for streaming.
                 </Text>
               </>
             )}
@@ -305,6 +313,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 16,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingVertical: 20,
   },
   videoCard: {
     flexDirection: 'row',
