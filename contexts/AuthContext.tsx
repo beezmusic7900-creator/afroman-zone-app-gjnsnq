@@ -4,10 +4,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AuthContextType {
   isAdminLoggedIn: boolean;
+  isMusicDistributorLoggedIn: boolean;
   isSubscribed: boolean;
   isGuest: boolean;
   paymentPending: boolean;
-  login: (email: string, password: string) => boolean;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   setGuestMode: (isGuest: boolean) => void;
   verifyPayment: (verificationCode: string) => Promise<boolean>;
@@ -19,9 +20,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const ADMIN_EMAIL = 'hungry.hustler@yahoo.com';
 const ADMIN_PASSWORD = 'Afroman420!!';
+const MUSIC_DISTRIBUTOR_EMAIL = 'contactacmgroup@gmail.com';
+const MUSIC_DISTRIBUTOR_PASSWORD = 'cannabis123';
 const SUBSCRIPTION_KEY = '@afroman_subscription';
 const PAYMENT_PENDING_KEY = '@afroman_payment_pending';
 const ADMIN_SESSION_KEY = '@afroman_admin_session';
+const MUSIC_DISTRIBUTOR_SESSION_KEY = '@afroman_music_distributor_session';
 
 // Valid verification codes that would be provided after successful Stripe payment
 const VALID_VERIFICATION_CODES = [
@@ -32,6 +36,7 @@ const VALID_VERIFICATION_CODES = [
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [isMusicDistributorLoggedIn, setIsMusicDistributorLoggedIn] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
   const [paymentPending, setPaymentPendingState] = useState(false);
@@ -40,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadSubscriptionStatus();
     loadAdminSession();
+    loadMusicDistributorSession();
   }, []);
 
   const loadAdminSession = async () => {
@@ -51,6 +57,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.log('Error loading admin session:', error);
+    }
+  };
+
+  const loadMusicDistributorSession = async () => {
+    try {
+      const distributorSession = await AsyncStorage.getItem(MUSIC_DISTRIBUTOR_SESSION_KEY);
+      if (distributorSession === 'active') {
+        setIsMusicDistributorLoggedIn(true);
+        console.log('Music distributor session restored');
+      }
+    } catch (error) {
+      console.log('Error loading music distributor session:', error);
     }
   };
 
@@ -82,8 +100,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
       setIsAdminLoggedIn(true);
+      setIsMusicDistributorLoggedIn(false);
       try {
         await AsyncStorage.setItem(ADMIN_SESSION_KEY, 'active');
+        await AsyncStorage.removeItem(MUSIC_DISTRIBUTOR_SESSION_KEY);
         console.log('Admin logged in successfully');
       } catch (error) {
         console.log('Error saving admin session:', error);
@@ -91,12 +111,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // TODO: Backend Integration - POST /api/admin/login with { email, password } → { success, token }
       return true;
     }
+    
+    if (email === MUSIC_DISTRIBUTOR_EMAIL && password === MUSIC_DISTRIBUTOR_PASSWORD) {
+      setIsMusicDistributorLoggedIn(true);
+      setIsAdminLoggedIn(false);
+      try {
+        await AsyncStorage.setItem(MUSIC_DISTRIBUTOR_SESSION_KEY, 'active');
+        await AsyncStorage.removeItem(ADMIN_SESSION_KEY);
+        console.log('Music distributor logged in successfully');
+      } catch (error) {
+        console.log('Error saving music distributor session:', error);
+      }
+      // TODO: Backend Integration - POST /api/distributor/login with { email, password } → { success, token }
+      return true;
+    }
+    
     console.log('Login failed: invalid credentials');
     return false;
   };
 
   const logout = async () => {
     setIsAdminLoggedIn(false);
+    setIsMusicDistributorLoggedIn(false);
     setIsSubscribed(false);
     setIsGuest(false);
     setPaymentPendingState(false);
@@ -105,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await AsyncStorage.removeItem(SUBSCRIPTION_KEY);
       await AsyncStorage.removeItem(PAYMENT_PENDING_KEY);
       await AsyncStorage.removeItem(ADMIN_SESSION_KEY);
+      await AsyncStorage.removeItem(MUSIC_DISTRIBUTOR_SESSION_KEY);
       console.log('User logged out, all sessions cleared');
     } catch (error) {
       console.log('Error clearing sessions:', error);
@@ -157,7 +194,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ 
-      isAdminLoggedIn, 
+      isAdminLoggedIn,
+      isMusicDistributorLoggedIn,
       isSubscribed, 
       isGuest, 
       paymentPending,

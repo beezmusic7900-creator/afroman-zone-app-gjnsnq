@@ -23,7 +23,7 @@ interface ContentItem {
 }
 
 export default function AdminScreen() {
-  const { isAdminLoggedIn, login, logout } = useAuth();
+  const { isAdminLoggedIn, isMusicDistributorLoggedIn, login, logout } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
@@ -77,10 +77,10 @@ export default function AdminScreen() {
   ]);
 
   const handleLogin = async () => {
-    console.log('Admin login attempt');
+    console.log('Admin/Distributor login attempt');
     const success = await login(email, password);
     if (success) {
-      showConfirm('Success! You are now logged in as admin.', () => {
+      showConfirm('Success! You are now logged in.', () => {
         setEmail('');
         setPassword('');
       });
@@ -241,13 +241,17 @@ export default function AdminScreen() {
 
   const handleLogout = () => {
     showConfirm('Are you sure you want to logout?', () => {
-      console.log('Admin logging out');
+      console.log('User logging out');
       logout();
       setShowConfirmModal(false);
     });
   };
 
-  if (!isAdminLoggedIn) {
+  const isLoggedIn = isAdminLoggedIn || isMusicDistributorLoggedIn;
+  const userRole = isAdminLoggedIn ? 'Admin' : isMusicDistributorLoggedIn ? 'Music Distributor' : '';
+  const canManageMerch = isAdminLoggedIn;
+
+  if (!isLoggedIn) {
     return (
       <View style={styles.container}>
         <ScrollView
@@ -260,7 +264,7 @@ export default function AdminScreen() {
               source={require('@/assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png')}
               style={commonStyles.logoSmall}
             />
-            <Text style={commonStyles.title}>Admin Login</Text>
+            <Text style={commonStyles.title}>Content Management Login</Text>
             <Text style={commonStyles.textSecondary}>
               Login to manage content
             </Text>
@@ -272,7 +276,7 @@ export default function AdminScreen() {
               style={styles.input}
               value={email}
               onChangeText={setEmail}
-              placeholder="Enter admin email"
+              placeholder="Enter email"
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="none"
               keyboardType="email-address"
@@ -336,13 +340,18 @@ export default function AdminScreen() {
             source={require('@/assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png')}
             style={commonStyles.logoSmall}
           />
-          <Text style={commonStyles.title}>Admin Dashboard</Text>
+          <Text style={commonStyles.title}>
+            {userRole}
+          </Text>
+          <Text style={commonStyles.title}>
+            Dashboard
+          </Text>
           <Text style={commonStyles.textSecondary}>
-            Manage all app content
+            Manage content
           </Text>
         </View>
 
-        {/* Tab Selector */}
+        {/* Tab Selector - Only show merch tab for admin */}
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tab, activeTab === 'videos' && styles.activeTab]}
@@ -353,15 +362,17 @@ export default function AdminScreen() {
               Videos & Songs
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'merch' && styles.activeTab]}
-            onPress={() => setActiveTab('merch')}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.tabText, activeTab === 'merch' && styles.activeTabText]}>
-              Merchandise
-            </Text>
-          </TouchableOpacity>
+          {canManageMerch && (
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'merch' && styles.activeTab]}
+              onPress={() => setActiveTab('merch')}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.tabText, activeTab === 'merch' && styles.activeTabText]}>
+                Merchandise
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Video/Audio Upload Section */}
@@ -370,7 +381,7 @@ export default function AdminScreen() {
             <View style={commonStyles.card}>
               <Text style={styles.sectionTitle}>Release New Content</Text>
               <Text style={styles.sectionSubtitle}>
-                Upload videos or MP3 files for exclusive or free content
+                Upload videos or MP3 files for distribution
               </Text>
 
               {/* Content Type Selector */}
@@ -585,8 +596,8 @@ export default function AdminScreen() {
           </>
         )}
 
-        {/* Merchandise Upload Section */}
-        {activeTab === 'merch' && (
+        {/* Merchandise Upload Section - Admin Only */}
+        {activeTab === 'merch' && canManageMerch && (
           <>
             <View style={commonStyles.card}>
               <Text style={styles.sectionTitle}>Upload New Merchandise</Text>
