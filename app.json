@@ -1,4 +1,3 @@
-
 {
   "expo": {
     "name": "Official OGAfroman App",
@@ -37,7 +36,7 @@
       "expo-router",
       "expo-web-browser"
     ],
-    "scheme": "natively",
+    "scheme": "Official OGAfroman App",
     "experiments": {
       "typedRoutes": true
     },

@@ -7,7 +7,7 @@ interface AuthContextType {
   isSubscribed: boolean;
   isGuest: boolean;
   paymentPending: boolean;
-  login: (username: string, password: string) => boolean;
+  login: (email: string, password: string) => boolean;
   logout: () => void;
   setGuestMode: (isGuest: boolean) => void;
   verifyPayment: (verificationCode: string) => Promise<boolean>;
@@ -17,13 +17,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const ADMIN_USERNAME = 'admin';
-const ADMIN_PASSWORD = 'afroman2025';
+const ADMIN_EMAIL = 'hungry.hustler@yahoo.com';
+const ADMIN_PASSWORD = 'Afroman420!!';
 const SUBSCRIPTION_KEY = '@afroman_subscription';
 const PAYMENT_PENDING_KEY = '@afroman_payment_pending';
+const ADMIN_SESSION_KEY = '@afroman_admin_session';
 
 // Valid verification codes that would be provided after successful Stripe payment
-// In a real app, these would be generated server-side and validated against Stripe
 const VALID_VERIFICATION_CODES = [
   'AFROMAN2025',
   'PREMIUM2025',
@@ -36,10 +36,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isGuest, setIsGuest] = useState(false);
   const [paymentPending, setPaymentPendingState] = useState(false);
 
-  // Load subscription status on mount
+  // Load subscription and admin status on mount
   useEffect(() => {
     loadSubscriptionStatus();
+    loadAdminSession();
   }, []);
+
+  const loadAdminSession = async () => {
+    try {
+      const adminSession = await AsyncStorage.getItem(ADMIN_SESSION_KEY);
+      if (adminSession === 'active') {
+        setIsAdminLoggedIn(true);
+        console.log('Admin session restored');
+      }
+    } catch (error) {
+      console.log('Error loading admin session:', error);
+    }
+  };
 
   const loadSubscriptionStatus = async () => {
     try {
@@ -64,10 +77,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadSubscriptionStatus();
   };
 
-  const login = (username: string, password: string): boolean => {
-    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+  const login = async (email: string, password: string): Promise<boolean> => {
+    console.log('Login attempt with email:', email);
+    
+    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
       setIsAdminLoggedIn(true);
-      console.log('Admin logged in successfully');
+      try {
+        await AsyncStorage.setItem(ADMIN_SESSION_KEY, 'active');
+        console.log('Admin logged in successfully');
+      } catch (error) {
+        console.log('Error saving admin session:', error);
+      }
+      // TODO: Backend Integration - POST /api/admin/login with { email, password } → { success, token }
       return true;
     }
     console.log('Login failed: invalid credentials');
@@ -83,9 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await AsyncStorage.removeItem(SUBSCRIPTION_KEY);
       await AsyncStorage.removeItem(PAYMENT_PENDING_KEY);
-      console.log('User logged out, subscription cleared');
+      await AsyncStorage.removeItem(ADMIN_SESSION_KEY);
+      console.log('User logged out, all sessions cleared');
     } catch (error) {
-      console.log('Error clearing subscription:', error);
+      console.log('Error clearing sessions:', error);
     }
   };
 
@@ -112,7 +134,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verifyPayment = async (verificationCode: string): Promise<boolean> => {
     console.log('Attempting to verify payment with code:', verificationCode);
     
-    // Validate the verification code
     const isValid = VALID_VERIFICATION_CODES.includes(verificationCode.toUpperCase().trim());
     
     if (isValid) {
