@@ -18,6 +18,10 @@ export default function TabLayout() {
         <Icon sf="film.fill" />
         <Label>Movies</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger key="music" name="music">
+        <Icon sf="music.note" />
+        <Label>Music</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger key="merch" name="merch">
         <Icon sf="bag.fill" />
         <Label>Merch</Label>
