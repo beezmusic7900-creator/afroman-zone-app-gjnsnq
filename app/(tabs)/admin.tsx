@@ -30,6 +30,7 @@ export default function AdminScreen() {
   const [videoUrl, setVideoUrl] = useState('');
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [isExclusive, setIsExclusive] = useState(true);
+  const [videoPrice, setVideoPrice] = useState('');
   
   // Merchandise upload state
   const [merchName, setMerchName] = useState('');
@@ -55,6 +56,7 @@ export default function AdminScreen() {
       thumbnailUrl: 'https://img.youtube.com/vi/WeYsTmIzjkw/maxresdefault.jpg',
       isExclusive: false,
       type: 'video',
+      price: 0,
     },
     {
       id: '2',
@@ -64,6 +66,7 @@ export default function AdminScreen() {
       thumbnailUrl: 'https://img.youtube.com/vi/SIMcktul77c/maxresdefault.jpg',
       isExclusive: false,
       type: 'video',
+      price: 0,
     },
   ]);
 
@@ -92,6 +95,11 @@ export default function AdminScreen() {
       return;
     }
 
+    if (isExclusive && (!videoPrice || parseFloat(videoPrice) <= 0)) {
+      showConfirm('Please set a valid price for exclusive content', () => {});
+      return;
+    }
+
     console.log('Uploading video:', videoTitle);
     
     const newVideo: ContentItem = {
@@ -102,18 +110,21 @@ export default function AdminScreen() {
       thumbnailUrl,
       isExclusive,
       type: 'video',
+      price: isExclusive ? parseFloat(videoPrice) : 0,
     };
     
     setContentList([...contentList, newVideo]);
     
-    // TODO: Backend Integration - POST /api/admin/videos with { title, description, videoUrl, thumbnailUrl, isExclusive } → created video
+    // TODO: Backend Integration - POST /api/admin/videos with { title, description, videoUrl, thumbnailUrl, isExclusive, price } → created video
     
-    showConfirm('Video uploaded successfully!', () => {
+    const priceText = isExclusive ? ` for $${videoPrice}` : ' as free content';
+    showConfirm(`Video uploaded successfully${priceText}!`, () => {
       setVideoTitle('');
       setVideoDescription('');
       setVideoUrl('');
       setThumbnailUrl('');
       setIsExclusive(true);
+      setVideoPrice('');
     });
   };
 
@@ -271,7 +282,7 @@ export default function AdminScreen() {
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'videos' && styles.activeTabText]}>
-              Videos
+              Videos & Songs
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -289,14 +300,17 @@ export default function AdminScreen() {
         {activeTab === 'videos' && (
           <>
             <View style={commonStyles.card}>
-              <Text style={styles.sectionTitle}>Upload New Video</Text>
+              <Text style={styles.sectionTitle}>Release New Video/Song</Text>
+              <Text style={styles.sectionSubtitle}>
+                Upload exclusive content for purchase or free content for all users
+              </Text>
 
-              <Text style={styles.label}>Video Title</Text>
+              <Text style={styles.label}>Title</Text>
               <TextInput
                 style={styles.input}
                 value={videoTitle}
                 onChangeText={setVideoTitle}
-                placeholder="Enter video title"
+                placeholder="Enter video or song title"
                 placeholderTextColor={colors.textSecondary}
               />
 
@@ -305,7 +319,7 @@ export default function AdminScreen() {
                 style={[styles.input, styles.textArea]}
                 value={videoDescription}
                 onChangeText={setVideoDescription}
-                placeholder="Enter video description"
+                placeholder="Enter description"
                 placeholderTextColor={colors.textSecondary}
                 multiline
                 numberOfLines={4}
@@ -334,47 +348,90 @@ export default function AdminScreen() {
               <View style={styles.checkboxContainer}>
                 <TouchableOpacity
                   style={styles.checkbox}
-                  onPress={() => setIsExclusive(!isExclusive)}
+                  onPress={() => {
+                    setIsExclusive(!isExclusive);
+                    if (isExclusive) {
+                      setVideoPrice('');
+                    }
+                  }}
                   activeOpacity={0.7}
                 >
                   <View style={[styles.checkboxBox, isExclusive && styles.checkboxBoxChecked]}>
                     {isExclusive && <Text style={styles.checkboxCheck}>✓</Text>}
                   </View>
-                  <Text style={styles.checkboxLabel}>Exclusive (requires subscription)</Text>
+                  <Text style={styles.checkboxLabel}>Exclusive (for purchase only)</Text>
                 </TouchableOpacity>
               </View>
 
+              {isExclusive && (
+                <>
+                  <Text style={styles.label}>Price ($)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={videoPrice}
+                    onChangeText={setVideoPrice}
+                    placeholder="9.99"
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType="decimal-pad"
+                  />
+                  <Text style={styles.helperText}>
+                    Users will need to purchase this content to view it
+                  </Text>
+                </>
+              )}
+
+              {!isExclusive && (
+                <Text style={styles.helperText}>
+                  This content will be free for all users
+                </Text>
+              )}
+
               <TouchableOpacity style={styles.uploadButton} onPress={handleUploadVideo} activeOpacity={0.7}>
-                <Text style={styles.buttonText}>Upload Video</Text>
+                <Text style={styles.buttonText}>
+                  {isExclusive ? 'Release for Purchase' : 'Release for Free'}
+                </Text>
               </TouchableOpacity>
             </View>
 
             {/* Video List */}
             <View style={commonStyles.card}>
               <Text style={styles.sectionTitle}>
-                Uploaded Videos
+                Released Content
               </Text>
               <Text style={styles.countText}>
                 {videoContent.length}
               </Text>
-              {videoContent.map((item) => (
-                <View key={item.id} style={styles.contentItem}>
-                  <View style={styles.contentInfo}>
-                    <Text style={styles.contentTitle}>{item.title}</Text>
-                    <Text style={styles.contentDescription}>{item.description}</Text>
-                    <Text style={styles.contentMeta}>
-                      {item.isExclusive ? 'Exclusive' : 'Free'}
-                    </Text>
+              <Text style={styles.countText}>
+                items
+              </Text>
+              {videoContent.map((item) => {
+                const priceDisplay = item.isExclusive && item.price ? `$${item.price.toFixed(2)}` : 'Free';
+                const statusDisplay = item.isExclusive ? 'Exclusive' : 'Free';
+                
+                return (
+                  <View key={item.id} style={styles.contentItem}>
+                    <View style={styles.contentInfo}>
+                      <Text style={styles.contentTitle}>{item.title}</Text>
+                      <Text style={styles.contentDescription}>{item.description}</Text>
+                      <View style={styles.contentMetaRow}>
+                        <Text style={styles.contentMeta}>
+                          {statusDisplay}
+                        </Text>
+                        <Text style={styles.contentPrice}>
+                          {priceDisplay}
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteContent(item.id, 'video')}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.deleteButtonText}>Delete</Text>
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => handleDeleteContent(item.id, 'video')}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.deleteButtonText}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
+                );
+              })}
             </View>
           </>
         )}
@@ -469,24 +526,43 @@ export default function AdminScreen() {
               <Text style={styles.countText}>
                 {merchContent.length}
               </Text>
-              {merchContent.map((item) => (
-                <View key={item.id} style={styles.contentItem}>
-                  <View style={styles.contentInfo}>
-                    <Text style={styles.contentTitle}>{item.title}</Text>
-                    <Text style={styles.contentDescription}>{item.description}</Text>
-                    <Text style={styles.contentMeta}>
-                      ${item.price?.toFixed(2)} • {item.merchType} • {item.color}
-                    </Text>
+              <Text style={styles.countText}>
+                items
+              </Text>
+              {merchContent.map((item) => {
+                const priceDisplay = `$${item.price?.toFixed(2)}`;
+                const typeDisplay = item.merchType === 'tshirt' ? 'T-Shirt' : 'Hoodie';
+                
+                return (
+                  <View key={item.id} style={styles.contentItem}>
+                    <View style={styles.contentInfo}>
+                      <Text style={styles.contentTitle}>{item.title}</Text>
+                      <Text style={styles.contentDescription}>{item.description}</Text>
+                      <View style={styles.contentMetaRow}>
+                        <Text style={styles.contentMeta}>
+                          {typeDisplay}
+                        </Text>
+                        <Text style={styles.contentMeta}>
+                          •
+                        </Text>
+                        <Text style={styles.contentMeta}>
+                          {item.color}
+                        </Text>
+                        <Text style={styles.contentPrice}>
+                          {priceDisplay}
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteContent(item.id, 'merch')}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.deleteButtonText}>Delete</Text>
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => handleDeleteContent(item.id, 'merch')}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.deleteButtonText}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
+                );
+              })}
             </View>
           </>
         )}
@@ -579,12 +655,17 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: colors.text,
+    marginBottom: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
     marginBottom: 16,
   },
   countText: {
     fontSize: 14,
     color: colors.textSecondary,
-    marginBottom: 12,
+    marginBottom: 4,
   },
   label: {
     fontSize: 16,
@@ -607,6 +688,12 @@ const styles = StyleSheet.create({
   textArea: {
     height: 100,
     textAlignVertical: 'top',
+  },
+  helperText: {
+    fontSize: 14,
+    color: colors.accent,
+    marginBottom: 12,
+    fontStyle: 'italic',
   },
   checkboxContainer: {
     marginVertical: 12,
@@ -708,9 +795,20 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: 4,
   },
+  contentMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   contentMeta: {
     fontSize: 12,
     color: colors.accent,
+  },
+  contentPrice: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primary,
+    marginLeft: 'auto',
   },
   deleteButton: {
     backgroundColor: colors.secondary,

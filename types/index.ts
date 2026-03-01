@@ -7,6 +7,8 @@ export interface Video {
   videoUrl: string;
   isFree: boolean;
   duration?: string;
+  price?: number;
+  isExclusive?: boolean;
 }
 
 export interface MerchItem {
@@ -49,6 +51,7 @@ export interface AdminVideo {
   videoUrl: string;
   thumbnailUrl: string;
   isExclusive: boolean;
+  price?: number;
   uploadedAt: string;
   uploadedBy: string;
 }
@@ -63,4 +66,13 @@ export interface AdminMerchandise {
   type: string;
   color: string;
   uploadedAt: string;
+}
+
+export interface PurchasedContent {
+  id: string;
+  contentId: string;
+  contentType: 'video' | 'song';
+  title: string;
+  purchaseDate: string;
+  price: number;
 }

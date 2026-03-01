@@ -5,6 +5,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { CartProvider } from '@/contexts/CartContext';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { PurchaseProvider } from '@/contexts/PurchaseContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -25,14 +26,16 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <CartProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="formsheet" options={{ presentation: 'formSheet' }} />
-          <Stack.Screen name="transparent-modal" options={{ presentation: 'transparentModal' }} />
-        </Stack>
-      </CartProvider>
+      <PurchaseProvider>
+        <CartProvider>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="formsheet" options={{ presentation: 'formSheet' }} />
+            <Stack.Screen name="transparent-modal" options={{ presentation: 'transparentModal' }} />
+          </Stack>
+        </CartProvider>
+      </PurchaseProvider>
     </AuthProvider>
   );
 }
