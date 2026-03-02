@@ -2,8 +2,8 @@
 {
   "expo": {
     "name": "Official OGAfroman App",
-    "slug": "official-ogafroman-app",
-    "version": "1.0.0",
+    "slug": "Official-OGAfroman-App",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/9f7cd5f5-5039-40c6-8acb-0baad89ac7d7.png",
     "userInterfaceStyle": "automatic",
@@ -16,8 +16,16 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.Natively",
+      "buildNumber": "2",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "afromanapp"
+            ]
+          }
+        ]
       }
     },
     "android": {
@@ -26,7 +34,8 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.Natively"
+      "package": "com.anonymous.Natively",
+      "versionCode": 2
     },
     "web": {
       "favicon": "./assets/images/9f7cd5f5-5039-40c6-8acb-0baad89ac7d7.png",
@@ -37,7 +46,7 @@
       "expo-router",
       "expo-web-browser"
     ],
-    "scheme": "officialogafromanapp",
+    "scheme": "afromanapp",
     "experiments": {
       "typedRoutes": true
     },
