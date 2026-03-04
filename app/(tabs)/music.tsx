@@ -7,6 +7,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePurchase } from '@/contexts/PurchaseContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Video } from '@/types';
+import { useFocusEffect } from '@react-navigation/native';
+
+const CONTENT_STORAGE_KEY = '@afroman_admin_content';
 
 const styles = StyleSheet.create({
   container: {
@@ -186,14 +189,17 @@ export default function MusicScreen() {
   const [selectedMusic, setSelectedMusic] = useState<Video | null>(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
 
-  useEffect(() => {
-    console.log('MusicScreen: Loading exclusive music content');
-    loadExclusiveMusic();
-  }, []);
+  // Load content when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('MusicScreen: Screen focused, loading music content');
+      loadExclusiveMusic();
+    }, [])
+  );
 
   const loadExclusiveMusic = async () => {
     try {
-      const stored = await AsyncStorage.getItem('adminContent');
+      const stored = await AsyncStorage.getItem(CONTENT_STORAGE_KEY);
       if (stored) {
         const allContent = JSON.parse(stored);
         // Filter for audio/music content that is exclusive
@@ -202,6 +208,9 @@ export default function MusicScreen() {
         );
         console.log('MusicScreen: Loaded exclusive music items:', musicContent.length);
         setExclusiveMusic(musicContent);
+      } else {
+        console.log('MusicScreen: No content found in storage');
+        setExclusiveMusic([]);
       }
     } catch (error) {
       console.error('MusicScreen: Error loading exclusive music:', error);

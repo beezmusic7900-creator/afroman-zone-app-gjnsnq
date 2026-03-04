@@ -5,7 +5,10 @@ import { colors, commonStyles } from '@/styles/commonStyles';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePurchase } from '@/contexts/PurchaseContext';
 import { useRouter } from 'expo-router';
-import { freeVideos, premiumVideos } from '@/data/videos';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
+
+const CONTENT_STORAGE_KEY = '@afroman_admin_content';
 
 export default function MoviesScreen() {
   const router = useRouter();
@@ -14,17 +17,42 @@ export default function MoviesScreen() {
   
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
+  const [freeVideos, setFreeVideos] = useState<any[]>([]);
   const [exclusiveVideos, setExclusiveVideos] = useState<any[]>([]);
 
-  useEffect(() => {
-    loadExclusiveContent();
-  }, []);
+  // Load content when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('MoviesScreen: Screen focused, loading content');
+      loadContent();
+    }, [])
+  );
 
-  const loadExclusiveContent = async () => {
-    // TODO: Backend Integration - GET /api/videos/exclusive → [{ id, title, description, thumbnailUrl, videoUrl, price, isExclusive }]
-    // For now, load from premiumVideos (which admin can populate)
-    setExclusiveVideos(premiumVideos);
-    console.log('Loaded exclusive content:', premiumVideos.length, 'items');
+  const loadContent = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(CONTENT_STORAGE_KEY);
+      if (stored) {
+        const allContent = JSON.parse(stored);
+        
+        // Filter for video content only
+        const videoContent = allContent.filter((item: any) => item.type === 'video');
+        
+        // Separate free and exclusive videos
+        const free = videoContent.filter((item: any) => !item.isExclusive);
+        const exclusive = videoContent.filter((item: any) => item.isExclusive);
+        
+        setFreeVideos(free);
+        setExclusiveVideos(exclusive);
+        
+        console.log('MoviesScreen: Loaded videos - Free:', free.length, 'Exclusive:', exclusive.length);
+      } else {
+        console.log('MoviesScreen: No content found in storage');
+        setFreeVideos([]);
+        setExclusiveVideos([]);
+      }
+    } catch (error) {
+      console.error('MoviesScreen: Error loading content:', error);
+    }
   };
 
   const handleGuestMode = () => {
@@ -70,7 +98,6 @@ export default function MoviesScreen() {
 
     console.log('Processing purchase for:', selectedVideo.title);
     
-    // Redirect to the new Stripe payment link for exclusive content
     const exclusiveContentPaymentUrl = 'https://buy.stripe.com/00w9AV0Jf8JO9tX41v6Na0d';
     
     setShowPurchaseModal(false);
@@ -78,13 +105,9 @@ export default function MoviesScreen() {
     console.log('Redirecting to Stripe payment:', exclusiveContentPaymentUrl);
     await Linking.openURL(exclusiveContentPaymentUrl);
     
-    // After successful payment, the content will be available
-    // In production, this would be confirmed by the backend after payment verification
-    // For now, we'll add it to purchased content (user would need to verify payment)
     // TODO: Backend Integration - POST /api/purchases with { contentId, contentType: 'video', price } → { purchaseId, success }
     // TODO: Backend Integration - Webhook from Stripe to verify payment and unlock content
     
-    // Simulate purchase completion (in production, this happens after webhook confirmation)
     await addPurchase({
       id: Date.now().toString(),
       contentId: selectedVideo.id,
@@ -94,9 +117,6 @@ export default function MoviesScreen() {
       price: selectedVideo.price || 0,
     });
   };
-
-  const freeVideosDisplay = freeVideos;
-  const exclusiveVideosDisplay = exclusiveVideos;
 
   return (
     <View style={styles.container}>
@@ -118,45 +138,47 @@ export default function MoviesScreen() {
         </View>
 
         {/* Free Videos Section */}
-        <View style={commonStyles.card}>
-          <Text style={styles.sectionTitle}>Free Content</Text>
-          <Text style={styles.sectionSubtitle}>
-            Watch these videos for free
-          </Text>
-          {freeVideosDisplay.map((video) => (
-            <TouchableOpacity
-              key={video.id}
-              style={styles.videoCard}
-              onPress={() => handleVideoPress(video.id, video.isFree, false)}
-              activeOpacity={0.7}
-            >
-              <Image
-                source={{ uri: video.thumbnailUrl }}
-                style={styles.thumbnail}
-                resizeMode="cover"
-              />
-              <View style={styles.videoInfo}>
-                <Text style={styles.videoTitle}>{video.title}</Text>
-                <Text style={styles.videoDescription}>{video.description}</Text>
-                <View style={styles.videoMeta}>
-                  <Text style={styles.freeTag}>FREE</Text>
-                  {video.duration && (
-                    <Text style={styles.duration}>{video.duration}</Text>
-                  )}
+        {freeVideos.length > 0 && (
+          <View style={commonStyles.card}>
+            <Text style={styles.sectionTitle}>Free Content</Text>
+            <Text style={styles.sectionSubtitle}>
+              Watch these videos for free
+            </Text>
+            {freeVideos.map((video) => (
+              <TouchableOpacity
+                key={video.id}
+                style={styles.videoCard}
+                onPress={() => handleVideoPress(video.id, true, false)}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={{ uri: video.thumbnailUrl }}
+                  style={styles.thumbnail}
+                  resizeMode="cover"
+                />
+                <View style={styles.videoInfo}>
+                  <Text style={styles.videoTitle}>{video.title}</Text>
+                  <Text style={styles.videoDescription}>{video.description}</Text>
+                  <View style={styles.videoMeta}>
+                    <Text style={styles.freeTag}>FREE</Text>
+                    {video.duration && (
+                      <Text style={styles.duration}>{video.duration}</Text>
+                    )}
+                  </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* Exclusive Purchasable Content */}
-        {exclusiveVideosDisplay.length > 0 && (
+        {exclusiveVideos.length > 0 && (
           <View style={commonStyles.card}>
             <Text style={styles.sectionTitle}>Exclusive Releases</Text>
             <Text style={styles.sectionSubtitle}>
               Purchase to unlock exclusive content
             </Text>
-            {exclusiveVideosDisplay.map((video) => {
+            {exclusiveVideos.map((video) => {
               const isContentPurchased = isPurchased(video.id);
               const hasAccess = isSubscribed || isContentPurchased;
               const priceDisplay = `$${video.price?.toFixed(2) || '0.00'}`;
@@ -205,18 +227,18 @@ export default function MoviesScreen() {
           </View>
         )}
 
-        {/* Empty state when no exclusive content */}
-        {exclusiveVideosDisplay.length === 0 && (
+        {/* Empty state when no content */}
+        {freeVideos.length === 0 && exclusiveVideos.length === 0 && (
           <View style={commonStyles.card}>
-            <Text style={styles.sectionTitle}>Exclusive Releases</Text>
+            <Text style={styles.sectionTitle}>Videos</Text>
             <Text style={styles.emptyStateText}>
-              No exclusive content available yet. Check back soon for new releases!
+              No videos available yet. Check back soon for new releases!
             </Text>
           </View>
         )}
 
         {/* Subscription Section */}
-        {!isSubscribed && (
+        {!isSubscribed && exclusiveVideos.length > 0 && (
           <View style={commonStyles.card}>
             <Text style={styles.sectionTitle}>Get All Access</Text>
             <Text style={styles.sectionSubtitle}>

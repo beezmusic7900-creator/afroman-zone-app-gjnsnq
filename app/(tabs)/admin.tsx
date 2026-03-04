@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Modal, Image } from 'react-native';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { useAuth } from '@/contexts/AuthContext';
 import * as DocumentPicker from 'expo-document-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface ContentItem {
   id: string;
@@ -20,10 +21,24 @@ interface ContentItem {
   merchType?: string;
   color?: string;
   fileName?: string;
+  uploadedAt: string;
+  uploadedBy: string;
 }
 
+interface UserAccount {
+  id: string;
+  email: string;
+  password: string;
+  role: 'admin' | 'distributor' | 'user';
+  canUpload: boolean;
+  createdAt: string;
+}
+
+const CONTENT_STORAGE_KEY = '@afroman_admin_content';
+const USERS_STORAGE_KEY = '@afroman_users';
+
 export default function AdminScreen() {
-  const { isAdminLoggedIn, isMusicDistributorLoggedIn, login, logout } = useAuth();
+  const { isAdminLoggedIn, isMusicDistributorLoggedIn, login, logout, userEmail } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
@@ -45,36 +60,107 @@ export default function AdminScreen() {
   const [merchType, setMerchType] = useState('tshirt');
   const [merchColor, setMerchColor] = useState('');
   
+  // User management state
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserRole, setNewUserRole] = useState<'distributor' | 'user'>('user');
+  const [newUserCanUpload, setNewUserCanUpload] = useState(false);
+  const [users, setUsers] = useState<UserAccount[]>([]);
+  
   // UI state
-  const [activeTab, setActiveTab] = useState<'videos' | 'merch'>('videos');
+  const [activeTab, setActiveTab] = useState<'videos' | 'merch' | 'users'>('videos');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
   const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
   const [isUploading, setIsUploading] = useState(false);
   
-  // Mock content list (in production, this would come from backend)
-  const [contentList, setContentList] = useState<ContentItem[]>([
-    {
-      id: '1',
-      title: 'Because I Got High',
-      description: 'Official Music Video',
-      videoUrl: 'https://www.youtube.com/embed/WeYsTmIzjkw',
-      thumbnailUrl: 'https://img.youtube.com/vi/WeYsTmIzjkw/maxresdefault.jpg',
-      isExclusive: false,
-      type: 'video',
-      price: 0,
-    },
-    {
-      id: '2',
-      title: 'Crazy Rap',
-      description: 'Official Music Video',
-      videoUrl: 'https://www.youtube.com/embed/SIMcktul77c',
-      thumbnailUrl: 'https://img.youtube.com/vi/SIMcktul77c/maxresdefault.jpg',
-      isExclusive: false,
-      type: 'video',
-      price: 0,
-    },
-  ]);
+  // Content list
+  const [contentList, setContentList] = useState<ContentItem[]>([]);
+
+  useEffect(() => {
+    if (isAdminLoggedIn || isMusicDistributorLoggedIn) {
+      loadContent();
+      if (isAdminLoggedIn) {
+        loadUsers();
+      }
+    }
+  }, [isAdminLoggedIn, isMusicDistributorLoggedIn]);
+
+  const loadContent = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(CONTENT_STORAGE_KEY);
+      if (stored) {
+        const content = JSON.parse(stored);
+        setContentList(content);
+        console.log('Admin: Loaded content items:', content.length);
+      } else {
+        // Initialize with free videos
+        const initialContent: ContentItem[] = [
+          {
+            id: '1',
+            title: 'Because I Got High',
+            description: 'Official Music Video',
+            videoUrl: 'https://www.youtube.com/embed/WeYsTmIzjkw',
+            thumbnailUrl: 'https://img.youtube.com/vi/WeYsTmIzjkw/maxresdefault.jpg',
+            isExclusive: false,
+            type: 'video',
+            price: 0,
+            uploadedAt: new Date().toISOString(),
+            uploadedBy: 'system',
+          },
+          {
+            id: '2',
+            title: 'Crazy Rap',
+            description: 'Official Music Video',
+            videoUrl: 'https://www.youtube.com/embed/SIMcktul77c',
+            thumbnailUrl: 'https://img.youtube.com/vi/SIMcktul77c/maxresdefault.jpg',
+            isExclusive: false,
+            type: 'video',
+            price: 0,
+            uploadedAt: new Date().toISOString(),
+            uploadedBy: 'system',
+          },
+        ];
+        await AsyncStorage.setItem(CONTENT_STORAGE_KEY, JSON.stringify(initialContent));
+        setContentList(initialContent);
+      }
+    } catch (error) {
+      console.error('Admin: Error loading content:', error);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(USERS_STORAGE_KEY);
+      if (stored) {
+        const userList = JSON.parse(stored);
+        setUsers(userList);
+        console.log('Admin: Loaded users:', userList.length);
+      }
+    } catch (error) {
+      console.error('Admin: Error loading users:', error);
+    }
+  };
+
+  const saveContent = async (updatedContent: ContentItem[]) => {
+    try {
+      await AsyncStorage.setItem(CONTENT_STORAGE_KEY, JSON.stringify(updatedContent));
+      setContentList(updatedContent);
+      console.log('Admin: Content saved successfully');
+    } catch (error) {
+      console.error('Admin: Error saving content:', error);
+    }
+  };
+
+  const saveUsers = async (updatedUsers: UserAccount[]) => {
+    try {
+      await AsyncStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updatedUsers));
+      setUsers(updatedUsers);
+      console.log('Admin: Users saved successfully');
+    } catch (error) {
+      console.error('Admin: Error saving users:', error);
+    }
+  };
 
   const handleLogin = async () => {
     console.log('Admin/Distributor login attempt');
@@ -144,16 +230,10 @@ export default function AdminScreen() {
     try {
       let uploadedAudioUrl = '';
 
-      // If audio file is selected, upload it first
+      // If audio file is selected, simulate upload
       if (contentType === 'audio' && audioFile) {
-        console.log('Uploading MP3 file to backend:', audioFile.name);
-        
-        // TODO: Backend Integration - POST /api/admin/upload/audio
-        // Multipart form data with 'audio' field
-        // Returns: { url: string, filename: string }
-        
-        // For now, simulate upload
-        uploadedAudioUrl = `https://storage.example.com/audio/${audioFile.name}`;
+        console.log('Uploading MP3 file:', audioFile.name);
+        uploadedAudioUrl = audioFile.uri;
         console.log('Audio uploaded to:', uploadedAudioUrl);
       }
 
@@ -168,17 +248,22 @@ export default function AdminScreen() {
         type: contentType,
         price: isExclusive ? parseFloat(contentPrice) : 0,
         fileName: contentType === 'audio' ? audioFile?.name : undefined,
+        uploadedAt: new Date().toISOString(),
+        uploadedBy: userEmail || 'admin',
       };
 
-      setContentList([...contentList, newContent]);
+      const updatedContent = [...contentList, newContent];
+      await saveContent(updatedContent);
 
       // TODO: Backend Integration - POST /api/admin/content
-      // Body: { title, description, videoUrl?, audioUrl?, thumbnailUrl, isExclusive, price, type }
+      // Body: { title, description, videoUrl?, audioUrl?, thumbnailUrl, isExclusive, price, type, uploadedBy }
       // Returns: created content object
 
       const typeText = contentType === 'video' ? 'Video' : 'Song';
       const priceText = isExclusive ? ` for $${contentPrice}` : ' as free content';
-      showConfirm(`${typeText} uploaded successfully${priceText}!`, () => {
+      const targetTab = contentType === 'video' ? 'Movies' : 'Music';
+      
+      showConfirm(`${typeText} uploaded successfully${priceText}! It will now appear in the ${targetTab} tab.`, () => {
         setContentTitle('');
         setContentDescription('');
         setVideoUrl('');
@@ -196,7 +281,7 @@ export default function AdminScreen() {
     }
   };
 
-  const handleUploadMerch = () => {
+  const handleUploadMerch = async () => {
     if (!merchName || !merchDescription || !merchPrice || !merchImageUrl || !merchColor) {
       showConfirm('Please fill in all merchandise fields', () => {});
       return;
@@ -214,9 +299,12 @@ export default function AdminScreen() {
       merchType,
       color: merchColor,
       type: 'merch',
+      uploadedAt: new Date().toISOString(),
+      uploadedBy: userEmail || 'admin',
     };
     
-    setContentList([...contentList, newMerch]);
+    const updatedContent = [...contentList, newMerch];
+    await saveContent(updatedContent);
     
     // TODO: Backend Integration - POST /api/admin/merchandise with { name, description, price, imageUrl, sizes, type, color } → created merchandise
     
@@ -231,10 +319,62 @@ export default function AdminScreen() {
 
   const handleDeleteContent = (id: string, type: 'video' | 'audio' | 'merch') => {
     const contentType = type === 'merch' ? 'merchandise item' : type;
-    showConfirm(`Are you sure you want to delete this ${contentType}?`, () => {
+    showConfirm(`Are you sure you want to delete this ${contentType}?`, async () => {
       console.log('Deleting content:', id);
-      setContentList(contentList.filter(item => item.id !== id));
+      const updatedContent = contentList.filter(item => item.id !== id);
+      await saveContent(updatedContent);
       // TODO: Backend Integration - DELETE /api/admin/content/:id → { success: true }
+      setShowConfirmModal(false);
+    });
+  };
+
+  const handleCreateUser = async () => {
+    if (!newUserEmail || !newUserPassword) {
+      showConfirm('Please enter email and password for the new user', () => {});
+      return;
+    }
+
+    // Check if user already exists
+    if (users.some(u => u.email === newUserEmail)) {
+      showConfirm('A user with this email already exists', () => {});
+      return;
+    }
+
+    console.log('Creating new user:', newUserEmail, 'Role:', newUserRole);
+
+    const newUser: UserAccount = {
+      id: Date.now().toString(),
+      email: newUserEmail,
+      password: newUserPassword,
+      role: newUserRole,
+      canUpload: newUserCanUpload,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedUsers = [...users, newUser];
+    await saveUsers(updatedUsers);
+
+    // TODO: Backend Integration - POST /api/admin/users
+    // Body: { email, password, role, canUpload }
+    // Returns: { userId, success }
+
+    const roleText = newUserRole === 'distributor' ? 'Music Distributor' : 'User';
+    const uploadText = newUserCanUpload ? ' with upload capabilities' : '';
+    
+    showConfirm(`${roleText} account created successfully${uploadText}!`, () => {
+      setNewUserEmail('');
+      setNewUserPassword('');
+      setNewUserRole('user');
+      setNewUserCanUpload(false);
+    });
+  };
+
+  const handleDeleteUser = (userId: string, userEmailToDelete: string) => {
+    showConfirm(`Are you sure you want to delete user: ${userEmailToDelete}?`, async () => {
+      console.log('Deleting user:', userId);
+      const updatedUsers = users.filter(u => u.id !== userId);
+      await saveUsers(updatedUsers);
+      // TODO: Backend Integration - DELETE /api/admin/users/:id → { success: true }
       setShowConfirmModal(false);
     });
   };
@@ -250,6 +390,7 @@ export default function AdminScreen() {
   const isLoggedIn = isAdminLoggedIn || isMusicDistributorLoggedIn;
   const userRole = isAdminLoggedIn ? 'Admin' : isMusicDistributorLoggedIn ? 'Music Distributor' : '';
   const canManageMerch = isAdminLoggedIn;
+  const canManageUsers = isAdminLoggedIn;
 
   if (!isLoggedIn) {
     return (
@@ -349,11 +490,11 @@ export default function AdminScreen() {
             Dashboard
           </Text>
           <Text style={commonStyles.textSecondary}>
-            Manage content
+            Manage content and users
           </Text>
         </View>
 
-        {/* Tab Selector - Only show merch tab for admin */}
+        {/* Tab Selector */}
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tab, activeTab === 'videos' && styles.activeTab]}
@@ -361,7 +502,7 @@ export default function AdminScreen() {
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'videos' && styles.activeTabText]}>
-              Videos & Songs
+              Content
             </Text>
           </TouchableOpacity>
           {canManageMerch && (
@@ -371,7 +512,18 @@ export default function AdminScreen() {
               activeOpacity={0.7}
             >
               <Text style={[styles.tabText, activeTab === 'merch' && styles.activeTabText]}>
-                Merchandise
+                Merch
+              </Text>
+            </TouchableOpacity>
+          )}
+          {canManageUsers && (
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'users' && styles.activeTab]}
+              onPress={() => setActiveTab('users')}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.tabText, activeTab === 'users' && styles.activeTabText]}>
+                Users
               </Text>
             </TouchableOpacity>
           )}
@@ -383,7 +535,7 @@ export default function AdminScreen() {
             <View style={commonStyles.card}>
               <Text style={styles.sectionTitle}>Release New Content</Text>
               <Text style={styles.sectionSubtitle}>
-                Upload videos or MP3 files for distribution
+                Upload videos or MP3 files - they will appear instantly in the app
               </Text>
 
               {/* Content Type Selector */}
@@ -729,6 +881,125 @@ export default function AdminScreen() {
           </>
         )}
 
+        {/* User Management Section - Admin Only */}
+        {activeTab === 'users' && canManageUsers && (
+          <>
+            <View style={commonStyles.card}>
+              <Text style={styles.sectionTitle}>Create New User</Text>
+              <Text style={styles.sectionSubtitle}>
+                Add users with custom permissions
+              </Text>
+
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={styles.input}
+                value={newUserEmail}
+                onChangeText={setNewUserEmail}
+                placeholder="user@example.com"
+                placeholderTextColor={colors.textSecondary}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                style={styles.input}
+                value={newUserPassword}
+                onChangeText={setNewUserPassword}
+                placeholder="Enter password"
+                placeholderTextColor={colors.textSecondary}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+
+              <Text style={styles.label}>Role</Text>
+              <View style={styles.typeContainer}>
+                <TouchableOpacity
+                  style={[styles.typeButton, newUserRole === 'user' && styles.typeButtonActive]}
+                  onPress={() => setNewUserRole('user')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.typeButtonText, newUserRole === 'user' && styles.typeButtonTextActive]}>
+                    User
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.typeButton, newUserRole === 'distributor' && styles.typeButtonActive]}
+                  onPress={() => setNewUserRole('distributor')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.typeButtonText, newUserRole === 'distributor' && styles.typeButtonTextActive]}>
+                    Distributor
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.checkboxContainer}>
+                <TouchableOpacity
+                  style={styles.checkbox}
+                  onPress={() => setNewUserCanUpload(!newUserCanUpload)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.checkboxBox, newUserCanUpload && styles.checkboxBoxChecked]}>
+                    {newUserCanUpload && <Text style={styles.checkboxCheck}>✓</Text>}
+                  </View>
+                  <Text style={styles.checkboxLabel}>Can upload content</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity style={styles.uploadButton} onPress={handleCreateUser} activeOpacity={0.7}>
+                <Text style={styles.buttonText}>Create User</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Users List */}
+            <View style={commonStyles.card}>
+              <Text style={styles.sectionTitle}>
+                User Accounts
+              </Text>
+              <Text style={styles.countText}>
+                {users.length}
+              </Text>
+              <Text style={styles.countText}>
+                users
+              </Text>
+              {users.map((user) => {
+                const roleDisplay = user.role === 'admin' ? 'Admin' : user.role === 'distributor' ? 'Distributor' : 'User';
+                const uploadDisplay = user.canUpload ? 'Can Upload' : 'View Only';
+                
+                return (
+                  <View key={user.id} style={styles.contentItem}>
+                    <View style={styles.contentInfo}>
+                      <Text style={styles.contentTitle}>{user.email}</Text>
+                      <View style={styles.contentMetaRow}>
+                        <Text style={styles.contentMeta}>
+                          {roleDisplay}
+                        </Text>
+                        <Text style={styles.contentMeta}>
+                          •
+                        </Text>
+                        <Text style={styles.contentMeta}>
+                          {uploadDisplay}
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteUser(user.id, user.email)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.deleteButtonText}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+              {users.length === 0 && (
+                <Text style={styles.emptyText}>No users created yet</Text>
+              )}
+            </View>
+          </>
+        )}
+
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.7}>
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
@@ -828,6 +1099,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 4,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingVertical: 20,
   },
   label: {
     fontSize: 16,
