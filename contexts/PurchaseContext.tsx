@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 interface PurchasedContent {
   id: string;
   contentId: string;
-  contentType: 'video' | 'song';
+  contentType: 'video' | 'song' | 'track';
   title: string;
   purchaseDate: string;
   price: number;
@@ -30,33 +30,52 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadPurchases = async () => {
+    console.log('PurchaseContext: Loading user purchases');
+    
     try {
+      // TODO: Backend Integration - GET /api/user/purchases
+      // Returns: [{ id, contentId, contentType, title, price, purchaseDate, paymentStatus }]
+      // Filter: Only returns purchases where userId matches authenticated user
+      
+      // Temporary: Load from AsyncStorage (will be replaced by backend)
       const stored = await AsyncStorage.getItem(PURCHASES_KEY);
       if (stored) {
         const purchases = JSON.parse(stored);
         setPurchasedContent(purchases);
-        console.log('Loaded purchases:', purchases.length);
+        console.log('PurchaseContext: Loaded purchases from local storage:', purchases.length);
+      } else {
+        console.log('PurchaseContext: No purchases found in local storage');
       }
-      // TODO: Backend Integration - GET /api/user/purchases → [{ id, contentId, contentType, title, purchaseDate, price }]
     } catch (error) {
-      console.log('Error loading purchases:', error);
+      console.error('PurchaseContext: Error loading purchases:', error);
     }
   };
 
   const addPurchase = async (content: PurchasedContent) => {
+    console.log('PurchaseContext: Adding purchase:', content.title);
+    
     try {
+      // TODO: Backend Integration - POST /api/purchases
+      // Body: { contentId, contentType: 'track' | 'video', title, price, stripePaymentId? }
+      // Sets userId from authenticated user
+      // Sets purchaseDate to current timestamp
+      // Returns: { purchaseId: string, success: true }
+      
+      // Temporary: Save to AsyncStorage (will be replaced by backend)
       const updated = [...purchasedContent, content];
       await AsyncStorage.setItem(PURCHASES_KEY, JSON.stringify(updated));
       setPurchasedContent(updated);
-      console.log('Purchase added:', content.title);
-      // TODO: Backend Integration - POST /api/purchases with { contentId, contentType, price } → { purchaseId, success }
+      console.log('PurchaseContext: Purchase added successfully');
     } catch (error) {
-      console.log('Error adding purchase:', error);
+      console.error('PurchaseContext: Error adding purchase:', error);
+      throw error;
     }
   };
 
   const isPurchased = (contentId: string): boolean => {
-    return purchasedContent.some(item => item.contentId === contentId);
+    const purchased = purchasedContent.some(item => item.contentId === contentId);
+    console.log('PurchaseContext: Checking if content is purchased:', contentId, '→', purchased);
+    return purchased;
   };
 
   return (

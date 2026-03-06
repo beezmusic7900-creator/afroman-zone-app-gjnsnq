@@ -1,15 +1,28 @@
 
-import React, { useState, useEffect } from 'react';
-import { ScrollView, View, Text, Image, TouchableOpacity, StyleSheet, Platform, Linking, Modal } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { ScrollView, View, Text, Image, TouchableOpacity, StyleSheet, Platform, Linking, Modal, ActivityIndicator } from 'react-native';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePurchase } from '@/contexts/PurchaseContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Video } from '@/types';
 import { useFocusEffect } from '@react-navigation/native';
 
-const CONTENT_STORAGE_KEY = '@afroman_admin_content';
+interface ExclusiveTrack {
+  id: string;
+  title: string;
+  artistName: string;
+  description: string;
+  price: number;
+  coverArtUrl: string;
+  audioFileUrl: string;
+  fileName: string;
+  fileType: string;
+  duration?: number;
+  status: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -42,27 +55,32 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 16,
   },
-  musicCard: {
+  trackCard: {
     backgroundColor: colors.card,
     borderRadius: 12,
     marginBottom: 16,
     overflow: 'hidden',
   },
-  musicImage: {
+  trackImage: {
     width: '100%',
     height: 200,
     backgroundColor: colors.cardDark,
   },
-  musicInfo: {
+  trackInfo: {
     padding: 16,
   },
-  musicTitle: {
+  trackTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: colors.text,
     marginBottom: 4,
   },
-  musicDescription: {
+  trackArtist: {
+    fontSize: 16,
+    color: colors.accent,
+    marginBottom: 4,
+  },
+  trackDescription: {
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 12,
@@ -129,6 +147,10 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -185,61 +207,66 @@ export default function MusicScreen() {
   const router = useRouter();
   const { isSubscribed } = useAuth();
   const { isPurchased } = usePurchase();
-  const [exclusiveMusic, setExclusiveMusic] = useState<Video[]>([]);
-  const [selectedMusic, setSelectedMusic] = useState<Video | null>(null);
+  const [exclusiveTracks, setExclusiveTracks] = useState<ExclusiveTrack[]>([]);
+  const [selectedTrack, setSelectedTrack] = useState<ExclusiveTrack | null>(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Load content when screen comes into focus
+  // Load tracks when screen comes into focus
   useFocusEffect(
-    React.useCallback(() => {
-      console.log('MusicScreen: Screen focused, loading music content');
-      loadExclusiveMusic();
+    useCallback(() => {
+      console.log('MusicScreen: Screen focused, loading exclusive tracks from database');
+      loadExclusiveTracks();
     }, [])
   );
 
-  const loadExclusiveMusic = async () => {
+  const loadExclusiveTracks = async () => {
+    setIsLoading(true);
+    console.log('MusicScreen: Fetching exclusive tracks from backend');
+    
     try {
-      const stored = await AsyncStorage.getItem(CONTENT_STORAGE_KEY);
-      if (stored) {
-        const allContent = JSON.parse(stored);
-        // Filter for audio/music content that is exclusive
-        const musicContent = allContent.filter(
-          (item: Video) => item.type === 'audio' && item.isExclusive
-        );
-        console.log('MusicScreen: Loaded exclusive music items:', musicContent.length);
-        setExclusiveMusic(musicContent);
-      } else {
-        console.log('MusicScreen: No content found in storage');
-        setExclusiveMusic([]);
-      }
+      // TODO: Backend Integration - GET /api/tracks
+      // Returns: [{ id, title, artistName, description, price, coverArtUrl, audioFileUrl, fileName, fileType, duration, status, isActive, createdAt, updatedAt }]
+      // Filter: Only returns tracks where status='published' AND isActive=true
+      // Ordered by: createdAt DESC (newest first)
+      
+      // Temporary: Empty array (will be replaced by backend data)
+      const tracks: ExclusiveTrack[] = [];
+      
+      console.log('MusicScreen: Loaded exclusive tracks:', tracks.length);
+      setExclusiveTracks(tracks);
+      
     } catch (error) {
-      console.error('MusicScreen: Error loading exclusive music:', error);
+      console.error('MusicScreen: Error loading exclusive tracks:', error);
+      setExclusiveTracks([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleMusicPress = (music: Video) => {
-    console.log('MusicScreen: User tapped music:', music.title);
+  const handleTrackPress = (track: ExclusiveTrack) => {
+    console.log('MusicScreen: User tapped track:', track.title);
     
     // Check if user has access (subscribed or purchased individually)
-    const hasAccess = isSubscribed || isPurchased(music.id);
+    const hasAccess = isSubscribed || isPurchased(track.id);
     
     if (hasAccess) {
       console.log('MusicScreen: User has access, navigating to player');
       // Navigate to audio player (reusing video player for now)
-      router.push(`/video/${music.id}`);
+      router.push(`/video/${track.id}`);
     } else {
       console.log('MusicScreen: User does not have access, showing purchase modal');
-      setSelectedMusic(music);
+      setSelectedTrack(track);
       setShowPurchaseModal(true);
     }
   };
 
   const handlePurchase = async () => {
-    console.log('MusicScreen: User clicked purchase button');
+    console.log('MusicScreen: User clicked purchase button for track:', selectedTrack?.title);
     setShowPurchaseModal(false);
     
     // Open Stripe payment link for exclusive content
-    const paymentUrl = 'https://buy.stripe.com/00w9AV0Jf8JO9tX41v6Na0d';
+    const paymentUrl = 'https://buy.stripe.com/6oU3cx77D1hmcG92Xr6Na02';
     console.log('MusicScreen: Opening Stripe payment link:', paymentUrl);
     
     try {
@@ -254,20 +281,22 @@ export default function MusicScreen() {
     }
   };
 
-  const renderMusicCard = (music: Video) => {
-    const hasAccess = isSubscribed || isPurchased(music.id);
-    const priceDisplay = music.price ? `$${music.price.toFixed(2)}` : '$9.99';
+  const renderTrackCard = (track: ExclusiveTrack) => {
+    const hasAccess = isSubscribed || isPurchased(track.id);
+    const priceDisplay = `$${track.price.toFixed(2)}`;
+    const durationDisplay = track.duration ? `${Math.floor(track.duration / 60)}:${(track.duration % 60).toString().padStart(2, '0')}` : '';
     
     return (
-      <View key={music.id} style={styles.musicCard}>
+      <View key={track.id} style={styles.trackCard}>
         <Image
-          source={{ uri: music.thumbnailUrl }}
-          style={styles.musicImage}
+          source={{ uri: track.coverArtUrl }}
+          style={styles.trackImage}
           resizeMode="cover"
         />
-        <View style={styles.musicInfo}>
-          <Text style={styles.musicTitle}>{music.title}</Text>
-          <Text style={styles.musicDescription}>{music.description}</Text>
+        <View style={styles.trackInfo}>
+          <Text style={styles.trackTitle}>{track.title}</Text>
+          <Text style={styles.trackArtist}>{track.artistName}</Text>
+          <Text style={styles.trackDescription}>{track.description}</Text>
           
           {!hasAccess && (
             <View style={styles.priceTag}>
@@ -278,9 +307,13 @@ export default function MusicScreen() {
             </View>
           )}
           
+          {durationDisplay && (
+            <Text style={styles.trackDescription}>Duration: {durationDisplay}</Text>
+          )}
+          
           <TouchableOpacity
             style={hasAccess ? styles.playButton : styles.lockedButton}
-            onPress={() => handleMusicPress(music)}
+            onPress={() => handleTrackPress(track)}
             activeOpacity={0.7}
           >
             <Text style={hasAccess ? styles.playButtonText : styles.lockedButtonText}>
@@ -296,21 +329,26 @@ export default function MusicScreen() {
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Exclusive Music</Text>
+          <Text style={styles.headerTitle}>Exclusive Tracks</Text>
           <Text style={styles.headerSubtitle}>
-            Premium tracks and unreleased content
+            Premium music and unreleased content
           </Text>
         </View>
 
         <View style={styles.section}>
-          {exclusiveMusic.length > 0 ? (
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.emptyStateSubtext}>Loading tracks...</Text>
+            </View>
+          ) : exclusiveTracks.length > 0 ? (
             <>
               <Text style={styles.sectionTitle}>Available Tracks</Text>
-              {exclusiveMusic.map(renderMusicCard)}
+              {exclusiveTracks.map(renderTrackCard)}
             </>
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No exclusive music yet</Text>
+              <Text style={styles.emptyStateText}>No exclusive tracks yet</Text>
               <Text style={styles.emptyStateSubtext}>
                 Check back soon for new releases
               </Text>
@@ -333,7 +371,9 @@ export default function MusicScreen() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Purchase Exclusive Track</Text>
             <Text style={styles.modalMessage}>
-              {selectedMusic?.title}
+              {selectedTrack?.title}
+              {'\n'}
+              by {selectedTrack?.artistName}
               {'\n\n'}
               Get instant access to this exclusive track. After purchase, you can stream it anytime through the app.
             </Text>

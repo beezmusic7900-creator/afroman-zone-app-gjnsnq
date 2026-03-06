@@ -31,6 +31,56 @@ export interface CartItem {
   quantity: number;
 }
 
+// New production-ready data models for backend integration
+export interface ExclusiveTrack {
+  id: string;
+  title: string;
+  artistName: string;
+  description: string;
+  price: number;
+  coverArtUrl: string;
+  audioFileUrl: string;
+  fileName: string;
+  fileType: string;
+  fileSizeBytes?: number;
+  duration?: number;
+  status: 'published' | 'unpublished' | 'archived';
+  isActive: boolean;
+  uploadedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExclusiveVideo {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  thumbnailUrl: string;
+  videoUrl: string;
+  fileName?: string;
+  fileType?: string;
+  status: 'published' | 'unpublished' | 'archived';
+  isActive: boolean;
+  isExclusive: boolean;
+  uploadedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserPurchase {
+  id: string;
+  userId: string;
+  contentId: string;
+  contentType: 'track' | 'video';
+  title: string;
+  price: number;
+  purchaseDate: string;
+  paymentStatus: 'pending' | 'completed' | 'failed';
+  stripePaymentId?: string;
+}
+
+// Legacy interfaces (kept for backward compatibility)
 export interface AdminContent {
   id: string;
   title: string;
