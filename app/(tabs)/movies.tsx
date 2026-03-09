@@ -29,10 +29,11 @@ export default function MoviesScreen() {
   const [videos, setVideos] = useState<ExclusiveVideo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load content when screen comes into focus
+  // Load content when screen comes into focus - this ensures newly uploaded videos appear immediately
   useFocusEffect(
     useCallback(() => {
       console.log('MoviesScreen: Screen focused, loading videos from database');
+      console.log('MoviesScreen: This will fetch all published videos, including newly uploaded ones');
       loadVideos();
     }, [])
   );
@@ -46,11 +47,14 @@ export default function MoviesScreen() {
       // Returns: [{ id, title, description, price, thumbnailUrl, videoUrl, isExclusive, createdAt, updatedAt }]
       // Filter: Only returns videos where status='published' AND isActive=true
       // Ordered by: createdAt DESC (newest first)
+      // CRITICAL: This endpoint MUST return videos immediately after admin uploads them with status='published'
+      // CRITICAL: When admin uploads a video with status='published', it MUST appear in this list on next fetch
       
       // Temporary: Empty array (will be replaced by backend data)
       const fetchedVideos: ExclusiveVideo[] = [];
       
       console.log('MoviesScreen: Loaded videos:', fetchedVideos.length);
+      console.log('MoviesScreen: Videos are ordered newest first, so recently uploaded videos appear at the top');
       setVideos(fetchedVideos);
       
     } catch (error) {

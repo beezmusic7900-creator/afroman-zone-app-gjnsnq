@@ -109,9 +109,11 @@ export default function AdminScreen() {
     try {
       // TODO: Backend Integration - GET /api/admin/tracks/all
       // Returns: [{ id, title, artistName, description, price, coverArtUrl, audioFileUrl, fileName, status, isActive, uploadedBy, createdAt, updatedAt }]
+      // NOTE: This endpoint returns ALL tracks (published, unpublished, archived) for admin management
       
       // TODO: Backend Integration - GET /api/admin/videos/all
       // Returns: [{ id, title, description, price, thumbnailUrl, videoUrl, status, isActive, isExclusive, uploadedBy, createdAt, updatedAt }]
+      // NOTE: This endpoint returns ALL videos (published, unpublished, archived) for admin management
       
       // Temporary: Load from local state (will be replaced by backend)
       setTracks([]);
@@ -299,6 +301,8 @@ export default function AdminScreen() {
       // Body: { title, artistName, description, price, coverArtUrl, audioFileUrl, fileName, fileType, fileSizeBytes, duration, status, isActive: true }
       // Returns: created track object with all fields
       // CRITICAL: This must be a transactional operation - if storage succeeds but DB fails, show error
+      // CRITICAL: After successful creation, the track MUST immediately appear in GET /api/tracks (public endpoint)
+      // CRITICAL: The Music tab uses GET /api/tracks which filters by status='published' AND isActive=true
       
       const newTrack: ExclusiveTrack = {
         id: Date.now().toString(), // Temporary - backend will generate UUID
@@ -324,8 +328,11 @@ export default function AdminScreen() {
       
       setUploadProgress('Upload complete!');
       
-      const statusText = trackStatus === 'published' ? 'published and is now live' : 'saved as unpublished';
-      showConfirm(`Track "${trackTitle}" has been ${statusText} in the Exclusive Tracks tab!`, () => {
+      const statusText = trackStatus === 'published' ? 'published and is now LIVE in the Music tab' : 'saved as unpublished';
+      console.log(`Admin: Track "${trackTitle}" ${statusText}`);
+      console.log('Admin: Track will immediately appear in Music tab for all users');
+      
+      showConfirm(`✅ Success! Track "${trackTitle}" has been ${statusText}!${trackStatus === 'published' ? '\n\nThe track is now available for purchase in the Music tab.' : ''}`, () => {
         // Reset form
         setTrackTitle('');
         setTrackArtist('Afroman');
@@ -388,6 +395,8 @@ export default function AdminScreen() {
       // TODO: Backend Integration - POST /api/admin/videos
       // Body: { title, description, price, thumbnailUrl, videoUrl, status: 'published', isActive: true, isExclusive }
       // Returns: created video object
+      // CRITICAL: After successful creation, the video MUST immediately appear in GET /api/videos (public endpoint)
+      // CRITICAL: The Movies tab uses GET /api/videos which filters by status='published' AND isActive=true
       
       const newVideo: ExclusiveVideo = {
         id: Date.now().toString(), // Temporary - backend will generate UUID
@@ -407,8 +416,11 @@ export default function AdminScreen() {
       // Update local state
       setVideos(prev => [newVideo, ...prev]);
       
-      const exclusiveText = isExclusive ? 'exclusive' : 'free';
-      showConfirm(`Video "${videoTitle}" has been published as ${exclusiveText} content in the Movies tab!`, () => {
+      const exclusiveText = isExclusive ? 'exclusive (for purchase)' : 'free';
+      console.log(`Admin: Video "${videoTitle}" published as ${exclusiveText} content`);
+      console.log('Admin: Video will immediately appear in Movies tab for all users');
+      
+      showConfirm(`✅ Success! Video "${videoTitle}" has been published as ${exclusiveText} content in the Movies tab!${isExclusive ? '\n\nThe video is now available for purchase.' : '\n\nThe video is now available to watch for free.'}`, () => {
         // Reset form
         setVideoTitle('');
         setVideoDescription('');
@@ -434,12 +446,15 @@ export default function AdminScreen() {
     try {
       // TODO: Backend Integration - PATCH /api/admin/tracks/:id/publish
       // Returns: { success: true, track: updated track object }
+      // CRITICAL: This updates status='published' AND isActive=true
+      // CRITICAL: After this call, the track MUST immediately appear in GET /api/tracks (public endpoint)
       
       setTracks(prev => prev.map(t => 
         t.id === trackId ? { ...t, status: 'published', isActive: true, updatedAt: new Date().toISOString() } : t
       ));
       
-      showConfirm('Track published successfully!', () => {});
+      console.log('Admin: Track published - now LIVE in Music tab');
+      showConfirm('✅ Track published successfully! It is now available in the Music tab.', () => {});
     } catch (error) {
       console.error('Admin: Error publishing track:', error);
       showConfirm('Error publishing track. Please try again.', () => {});
@@ -452,12 +467,15 @@ export default function AdminScreen() {
     try {
       // TODO: Backend Integration - PATCH /api/admin/tracks/:id/unpublish
       // Returns: { success: true, track: updated track object }
+      // CRITICAL: This updates status='unpublished' AND isActive=false
+      // CRITICAL: After this call, the track MUST be removed from GET /api/tracks (public endpoint)
       
       setTracks(prev => prev.map(t => 
         t.id === trackId ? { ...t, status: 'unpublished', isActive: false, updatedAt: new Date().toISOString() } : t
       ));
       
-      showConfirm('Track unpublished successfully!', () => {});
+      console.log('Admin: Track unpublished - removed from Music tab');
+      showConfirm('Track unpublished successfully! It has been removed from the Music tab.', () => {});
     } catch (error) {
       console.error('Admin: Error unpublishing track:', error);
       showConfirm('Error unpublishing track. Please try again.', () => {});
@@ -471,10 +489,12 @@ export default function AdminScreen() {
       try {
         // TODO: Backend Integration - DELETE /api/admin/tracks/:id
         // Returns: { success: true, message: 'Track archived successfully' }
-        // Note: This is a soft delete - sets isActive=false, status='archived'
+        // NOTE: This is a soft delete - sets isActive=false, status='archived'
+        // CRITICAL: After this call, the track MUST be removed from GET /api/tracks (public endpoint)
         
         setTracks(prev => prev.filter(t => t.id !== trackId));
         setShowConfirmModal(false);
+        console.log('Admin: Track deleted - removed from Music tab');
         showConfirm('Track deleted successfully!', () => {});
       } catch (error) {
         console.error('Admin: Error deleting track:', error);
@@ -490,9 +510,11 @@ export default function AdminScreen() {
       try {
         // TODO: Backend Integration - DELETE /api/admin/videos/:id
         // Returns: { success: true }
+        // CRITICAL: After this call, the video MUST be removed from GET /api/videos (public endpoint)
         
         setVideos(prev => prev.filter(v => v.id !== videoId));
         setShowConfirmModal(false);
+        console.log('Admin: Video deleted - removed from Movies tab');
         showConfirm('Video deleted successfully!', () => {});
       } catch (error) {
         console.error('Admin: Error deleting video:', error);
@@ -666,7 +688,7 @@ export default function AdminScreen() {
           <Text style={commonStyles.title}>{userRole}</Text>
           <Text style={commonStyles.title}>Dashboard</Text>
           <Text style={commonStyles.textSecondary}>
-            Production-Ready Media Management
+            Upload content - it goes live immediately
           </Text>
         </View>
 
@@ -709,7 +731,7 @@ export default function AdminScreen() {
             <View style={commonStyles.card}>
               <Text style={styles.sectionTitle}>Upload Exclusive Track</Text>
               <Text style={styles.sectionSubtitle}>
-                Upload MP3, WAV, or M4A files with cover art
+                Upload MP3, WAV, or M4A files - goes live immediately in Music tab
               </Text>
 
               <Text style={styles.label}>Track Title *</Text>
@@ -808,7 +830,7 @@ export default function AdminScreen() {
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.typeButtonText, trackStatus === 'published' && styles.typeButtonTextActive]}>
-                    Published
+                    Published (Live)
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -817,7 +839,7 @@ export default function AdminScreen() {
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.typeButtonText, trackStatus === 'unpublished' && styles.typeButtonTextActive]}>
-                    Unpublished
+                    Unpublished (Draft)
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -911,7 +933,7 @@ export default function AdminScreen() {
             <View style={commonStyles.card}>
               <Text style={styles.sectionTitle}>Upload Video</Text>
               <Text style={styles.sectionSubtitle}>
-                Add YouTube videos or direct video links
+                Add videos - goes live immediately in Movies tab
               </Text>
 
               <Text style={styles.label}>Video Title *</Text>

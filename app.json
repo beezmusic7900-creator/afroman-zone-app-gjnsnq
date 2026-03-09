@@ -1,8 +1,7 @@
-
 {
   "expo": {
-    "name": "Afroman App",
-    "slug": "afroman-app",
+    "name": "Official OGAfroman App",
+    "slug": "official-ogafroman-app",
     "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -19,7 +18,9 @@
       "infoPlist": {
         "CFBundleURLTypes": [
           {
-            "CFBundleURLSchemes": ["afromanapp"]
+            "CFBundleURLSchemes": [
+              "afromanapp"
+            ]
           }
         ]
       }
@@ -35,6 +36,6 @@
     "web": {
       "favicon": "./assets/images/favicon.png"
     },
-    "scheme": "afromanapp"
+    "scheme": "officialogafromanapp"
   }
 }

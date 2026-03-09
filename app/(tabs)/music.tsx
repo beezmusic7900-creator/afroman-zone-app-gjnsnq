@@ -212,10 +212,11 @@ export default function MusicScreen() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load tracks when screen comes into focus
+  // Load tracks when screen comes into focus - this ensures newly uploaded tracks appear immediately
   useFocusEffect(
     useCallback(() => {
       console.log('MusicScreen: Screen focused, loading exclusive tracks from database');
+      console.log('MusicScreen: This will fetch all published tracks, including newly uploaded ones');
       loadExclusiveTracks();
     }, [])
   );
@@ -229,11 +230,14 @@ export default function MusicScreen() {
       // Returns: [{ id, title, artistName, description, price, coverArtUrl, audioFileUrl, fileName, fileType, duration, status, isActive, createdAt, updatedAt }]
       // Filter: Only returns tracks where status='published' AND isActive=true
       // Ordered by: createdAt DESC (newest first)
+      // CRITICAL: This endpoint MUST return tracks immediately after admin uploads them with status='published'
+      // CRITICAL: When admin uploads a track with status='published', it MUST appear in this list on next fetch
       
       // Temporary: Empty array (will be replaced by backend data)
       const tracks: ExclusiveTrack[] = [];
       
       console.log('MusicScreen: Loaded exclusive tracks:', tracks.length);
+      console.log('MusicScreen: Tracks are ordered newest first, so recently uploaded tracks appear at the top');
       setExclusiveTracks(tracks);
       
     } catch (error) {
