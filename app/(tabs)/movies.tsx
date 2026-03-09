@@ -1,14 +1,23 @@
 
-import React, { useState, useEffect } from 'react';
-import { ScrollView, View, Text, Image, TouchableOpacity, StyleSheet, Platform, Linking, Modal } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { ScrollView, View, Text, Image, TouchableOpacity, StyleSheet, Platform, Linking, Modal, ActivityIndicator } from 'react-native';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePurchase } from '@/contexts/PurchaseContext';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 
-const CONTENT_STORAGE_KEY = '@afroman_admin_content';
+interface ExclusiveVideo {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  thumbnailUrl: string;
+  videoUrl: string;
+  isExclusive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function MoviesScreen() {
   const router = useRouter();
@@ -16,42 +25,39 @@ export default function MoviesScreen() {
   const { isPurchased, addPurchase } = usePurchase();
   
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
-  const [selectedVideo, setSelectedVideo] = useState<any>(null);
-  const [freeVideos, setFreeVideos] = useState<any[]>([]);
-  const [exclusiveVideos, setExclusiveVideos] = useState<any[]>([]);
+  const [selectedVideo, setSelectedVideo] = useState<ExclusiveVideo | null>(null);
+  const [videos, setVideos] = useState<ExclusiveVideo[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Load content when screen comes into focus
   useFocusEffect(
-    React.useCallback(() => {
-      console.log('MoviesScreen: Screen focused, loading content');
-      loadContent();
+    useCallback(() => {
+      console.log('MoviesScreen: Screen focused, loading videos from database');
+      loadVideos();
     }, [])
   );
 
-  const loadContent = async () => {
+  const loadVideos = async () => {
+    setIsLoading(true);
+    console.log('MoviesScreen: Fetching videos from backend');
+    
     try {
-      const stored = await AsyncStorage.getItem(CONTENT_STORAGE_KEY);
-      if (stored) {
-        const allContent = JSON.parse(stored);
-        
-        // Filter for video content only
-        const videoContent = allContent.filter((item: any) => item.type === 'video');
-        
-        // Separate free and exclusive videos
-        const free = videoContent.filter((item: any) => !item.isExclusive);
-        const exclusive = videoContent.filter((item: any) => item.isExclusive);
-        
-        setFreeVideos(free);
-        setExclusiveVideos(exclusive);
-        
-        console.log('MoviesScreen: Loaded videos - Free:', free.length, 'Exclusive:', exclusive.length);
-      } else {
-        console.log('MoviesScreen: No content found in storage');
-        setFreeVideos([]);
-        setExclusiveVideos([]);
-      }
+      // TODO: Backend Integration - GET /api/videos
+      // Returns: [{ id, title, description, price, thumbnailUrl, videoUrl, isExclusive, createdAt, updatedAt }]
+      // Filter: Only returns videos where status='published' AND isActive=true
+      // Ordered by: createdAt DESC (newest first)
+      
+      // Temporary: Empty array (will be replaced by backend data)
+      const fetchedVideos: ExclusiveVideo[] = [];
+      
+      console.log('MoviesScreen: Loaded videos:', fetchedVideos.length);
+      setVideos(fetchedVideos);
+      
     } catch (error) {
-      console.error('MoviesScreen: Error loading content:', error);
+      console.error('MoviesScreen: Error loading videos:', error);
+      setVideos([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -67,25 +73,20 @@ export default function MoviesScreen() {
     await Linking.openURL(subscriptionUrl);
   };
 
-  const handleVideoPress = (videoId: string, isFree: boolean, isExclusiveContent: boolean) => {
-    console.log('User tapped video:', videoId);
-    if (isFree) {
-      router.push(`/video/${videoId}`);
-    } else if (isExclusiveContent && (isSubscribed || isPurchased(videoId))) {
-      router.push(`/video/${videoId}`);
+  const handleVideoPress = (video: ExclusiveVideo) => {
+    console.log('User tapped video:', video.title);
+    
+    const isFree = !video.isExclusive;
+    const hasAccess = isFree || isSubscribed || isPurchased(video.id);
+    
+    if (hasAccess) {
+      router.push(`/video/${video.id}`);
     } else {
-      handleExclusiveContentPress();
+      handlePurchaseVideo(video);
     }
   };
 
-  const handleExclusiveContentPress = () => {
-    console.log('User tapped exclusive content');
-    if (!isSubscribed) {
-      router.push('/subscription');
-    }
-  };
-
-  const handlePurchaseVideo = (video: any) => {
+  const handlePurchaseVideo = (video: ExclusiveVideo) => {
     console.log('User wants to purchase video:', video.title);
     setSelectedVideo(video);
     setShowPurchaseModal(true);
@@ -118,6 +119,9 @@ export default function MoviesScreen() {
     });
   };
 
+  const freeVideos = videos.filter(v => !v.isExclusive);
+  const exclusiveVideos = videos.filter(v => v.isExclusive);
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -137,127 +141,127 @@ export default function MoviesScreen() {
           </Text>
         </View>
 
-        {/* Free Videos Section */}
-        {freeVideos.length > 0 && (
-          <View style={commonStyles.card}>
-            <Text style={styles.sectionTitle}>Free Content</Text>
-            <Text style={styles.sectionSubtitle}>
-              Watch these videos for free
-            </Text>
-            {freeVideos.map((video) => (
-              <TouchableOpacity
-                key={video.id}
-                style={styles.videoCard}
-                onPress={() => handleVideoPress(video.id, true, false)}
-                activeOpacity={0.7}
-              >
-                <Image
-                  source={{ uri: video.thumbnailUrl }}
-                  style={styles.thumbnail}
-                  resizeMode="cover"
-                />
-                <View style={styles.videoInfo}>
-                  <Text style={styles.videoTitle}>{video.title}</Text>
-                  <Text style={styles.videoDescription}>{video.description}</Text>
-                  <View style={styles.videoMeta}>
-                    <Text style={styles.freeTag}>FREE</Text>
-                    {video.duration && (
-                      <Text style={styles.duration}>{video.duration}</Text>
-                    )}
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.emptyStateText}>Loading videos...</Text>
           </View>
-        )}
-
-        {/* Exclusive Purchasable Content */}
-        {exclusiveVideos.length > 0 && (
-          <View style={commonStyles.card}>
-            <Text style={styles.sectionTitle}>Exclusive Releases</Text>
-            <Text style={styles.sectionSubtitle}>
-              Purchase to unlock exclusive content
-            </Text>
-            {exclusiveVideos.map((video) => {
-              const isContentPurchased = isPurchased(video.id);
-              const hasAccess = isSubscribed || isContentPurchased;
-              const priceDisplay = `$${video.price?.toFixed(2) || '0.00'}`;
-              
-              return (
-                <TouchableOpacity
-                  key={video.id}
-                  style={styles.videoCard}
-                  onPress={() => {
-                    if (hasAccess) {
-                      handleVideoPress(video.id, false, true);
-                    } else {
-                      handlePurchaseVideo(video);
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.thumbnailContainer}>
+        ) : (
+          <>
+            {/* Free Videos Section */}
+            {freeVideos.length > 0 && (
+              <View style={commonStyles.card}>
+                <Text style={styles.sectionTitle}>Free Content</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Watch these videos for free
+                </Text>
+                {freeVideos.map((video) => (
+                  <TouchableOpacity
+                    key={video.id}
+                    style={styles.videoCard}
+                    onPress={() => handleVideoPress(video)}
+                    activeOpacity={0.7}
+                  >
                     <Image
                       source={{ uri: video.thumbnailUrl }}
                       style={styles.thumbnail}
                       resizeMode="cover"
                     />
-                    {!hasAccess && (
-                      <View style={styles.lockOverlay}>
-                        <Text style={styles.lockIcon}>🔒</Text>
+                    <View style={styles.videoInfo}>
+                      <Text style={styles.videoTitle}>{video.title}</Text>
+                      <Text style={styles.videoDescription}>{video.description}</Text>
+                      <View style={styles.videoMeta}>
+                        <Text style={styles.freeTag}>FREE</Text>
                       </View>
-                    )}
-                  </View>
-                  <View style={styles.videoInfo}>
-                    <Text style={styles.videoTitle}>{video.title}</Text>
-                    <Text style={styles.videoDescription}>{video.description}</Text>
-                    <View style={styles.videoMeta}>
-                      {hasAccess ? (
-                        <Text style={styles.purchasedTag}>
-                          {isContentPurchased ? 'PURCHASED' : 'SUBSCRIBED'}
-                        </Text>
-                      ) : (
-                        <Text style={styles.priceTag}>{priceDisplay}</Text>
-                      )}
                     </View>
-                  </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Exclusive Purchasable Content */}
+            {exclusiveVideos.length > 0 && (
+              <View style={commonStyles.card}>
+                <Text style={styles.sectionTitle}>Exclusive Releases</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Purchase to unlock exclusive content
+                </Text>
+                {exclusiveVideos.map((video) => {
+                  const isContentPurchased = isPurchased(video.id);
+                  const hasAccess = isSubscribed || isContentPurchased;
+                  const priceDisplay = `$${video.price?.toFixed(2) || '0.00'}`;
+                  
+                  return (
+                    <TouchableOpacity
+                      key={video.id}
+                      style={styles.videoCard}
+                      onPress={() => handleVideoPress(video)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.thumbnailContainer}>
+                        <Image
+                          source={{ uri: video.thumbnailUrl }}
+                          style={styles.thumbnail}
+                          resizeMode="cover"
+                        />
+                        {!hasAccess && (
+                          <View style={styles.lockOverlay}>
+                            <Text style={styles.lockIcon}>🔒</Text>
+                          </View>
+                        )}
+                      </View>
+                      <View style={styles.videoInfo}>
+                        <Text style={styles.videoTitle}>{video.title}</Text>
+                        <Text style={styles.videoDescription}>{video.description}</Text>
+                        <View style={styles.videoMeta}>
+                          {hasAccess ? (
+                            <Text style={styles.purchasedTag}>
+                              {isContentPurchased ? 'PURCHASED' : 'SUBSCRIBED'}
+                            </Text>
+                          ) : (
+                            <Text style={styles.priceTag}>{priceDisplay}</Text>
+                          )}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* Empty state when no content */}
+            {videos.length === 0 && (
+              <View style={commonStyles.card}>
+                <Text style={styles.sectionTitle}>Videos</Text>
+                <Text style={styles.emptyStateText}>
+                  No videos available yet. Check back soon for new releases!
+                </Text>
+              </View>
+            )}
+
+            {/* Subscription Section */}
+            {!isSubscribed && exclusiveVideos.length > 0 && (
+              <View style={commonStyles.card}>
+                <Text style={styles.sectionTitle}>Get All Access</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Subscribe for unlimited access to all exclusive content
+                </Text>
+                <TouchableOpacity
+                  style={styles.subscribeButton}
+                  onPress={handleSubscribe}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.subscribeButtonText}>Subscribe Now</Text>
                 </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
+              </View>
+            )}
 
-        {/* Empty state when no content */}
-        {freeVideos.length === 0 && exclusiveVideos.length === 0 && (
-          <View style={commonStyles.card}>
-            <Text style={styles.sectionTitle}>Videos</Text>
-            <Text style={styles.emptyStateText}>
-              No videos available yet. Check back soon for new releases!
-            </Text>
-          </View>
-        )}
-
-        {/* Subscription Section */}
-        {!isSubscribed && exclusiveVideos.length > 0 && (
-          <View style={commonStyles.card}>
-            <Text style={styles.sectionTitle}>Get All Access</Text>
-            <Text style={styles.sectionSubtitle}>
-              Subscribe for unlimited access to all exclusive content
-            </Text>
-            <TouchableOpacity
-              style={styles.subscribeButton}
-              onPress={handleSubscribe}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.subscribeButtonText}>Subscribe Now</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {isSubscribed && (
-          <View style={commonStyles.card}>
-            <Text style={styles.subscribedText}>✓ You have full access to all content</Text>
-          </View>
+            {isSubscribed && (
+              <View style={commonStyles.card}>
+                <Text style={styles.subscribedText}>✓ You have full access to all content</Text>
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
 
@@ -324,6 +328,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
     paddingVertical: 20,
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
   },
   sectionTitle: {
     fontSize: 20,
@@ -418,10 +426,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
-  },
-  duration: {
-    fontSize: 12,
-    color: colors.textSecondary,
   },
   subscribeButton: {
     backgroundColor: colors.primary,
