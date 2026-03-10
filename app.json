@@ -1,3 +1,4 @@
+
 {
   "expo": {
     "name": "Official OGAfroman App",
@@ -11,6 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.afroman.app",
@@ -36,6 +40,9 @@
     "web": {
       "favicon": "./assets/images/favicon.png"
     },
-    "scheme": "officialogafromanapp"
+    "scheme": "afromanapp",
+    "plugins": [
+      "expo-router"
+    ]
   }
 }
