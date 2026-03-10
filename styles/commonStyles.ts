@@ -1,5 +1,5 @@
 
-import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 export const colors = {
   background: '#000000',
@@ -9,6 +9,7 @@ export const colors = {
   secondary: '#800080',
   accent: '#FFD700',
   card: '#1A1A1A',
+  cardDark: '#0D0D0D',
   highlight: '#ADD8E6',
 };
 
@@ -108,11 +109,9 @@ export const commonStyles = StyleSheet.create({
   logo: {
     width: 120,
     height: 120,
-    resizeMode: 'contain',
   },
   logoSmall: {
     width: 60,
     height: 60,
-    resizeMode: 'contain',
   },
 });
