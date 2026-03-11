@@ -6,23 +6,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePurchase } from '@/contexts/PurchaseContext';
 import { useFocusEffect } from '@react-navigation/native';
-
-interface ExclusiveTrack {
-  id: string;
-  title: string;
-  artistName: string;
-  description: string;
-  price: number;
-  coverArtUrl: string;
-  audioFileUrl: string;
-  fileName: string;
-  fileType: string;
-  duration?: number;
-  status: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import { getPublishedTracks, type ExclusiveTrack } from '@/utils/api';
 
 const styles = StyleSheet.create({
   container: {
@@ -212,32 +196,26 @@ export default function MusicScreen() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load tracks when screen comes into focus - this ensures newly uploaded tracks appear immediately
   useFocusEffect(
     useCallback(() => {
-      console.log('MusicScreen: Screen focused, loading exclusive tracks from database');
-      console.log('MusicScreen: This will fetch all published tracks, including newly uploaded ones');
+      console.log('MusicScreen: Screen focused - loading tracks from database');
+      console.log('MusicScreen: This will fetch ALL published tracks, including newly uploaded ones');
+      console.log('MusicScreen: Tracks are loaded from permanent database storage');
       loadExclusiveTracks();
     }, [])
   );
 
   const loadExclusiveTracks = async () => {
     setIsLoading(true);
-    console.log('MusicScreen: Fetching exclusive tracks from backend');
+    console.log('MusicScreen: Fetching published tracks from backend database');
+    console.log('MusicScreen: Only tracks with status=published AND isActive=true will be returned');
     
     try {
-      // TODO: Backend Integration - GET /api/tracks
-      // Returns: [{ id, title, artistName, description, price, coverArtUrl, audioFileUrl, fileName, fileType, duration, status, isActive, createdAt, updatedAt }]
-      // Filter: Only returns tracks where status='published' AND isActive=true
-      // Ordered by: createdAt DESC (newest first)
-      // CRITICAL: This endpoint MUST return tracks immediately after admin uploads them with status='published'
-      // CRITICAL: When admin uploads a track with status='published', it MUST appear in this list on next fetch
+      const tracks = await getPublishedTracks();
       
-      // Temporary: Empty array (will be replaced by backend data)
-      const tracks: ExclusiveTrack[] = [];
-      
-      console.log('MusicScreen: Loaded exclusive tracks:', tracks.length);
-      console.log('MusicScreen: Tracks are ordered newest first, so recently uploaded tracks appear at the top');
+      console.log('MusicScreen: ✅ Loaded exclusive tracks:', tracks.length);
+      console.log('MusicScreen: Tracks are ordered newest first (recently uploaded appear at top)');
+      console.log('MusicScreen: These tracks are stored PERMANENTLY and will remain until admin deletes them');
       setExclusiveTracks(tracks);
       
     } catch (error) {
@@ -251,12 +229,10 @@ export default function MusicScreen() {
   const handleTrackPress = (track: ExclusiveTrack) => {
     console.log('MusicScreen: User tapped track:', track.title);
     
-    // Check if user has access (subscribed or purchased individually)
     const hasAccess = isSubscribed || isPurchased(track.id);
     
     if (hasAccess) {
       console.log('MusicScreen: User has access, navigating to player');
-      // Navigate to audio player (reusing video player for now)
       router.push(`/video/${track.id}`);
     } else {
       console.log('MusicScreen: User does not have access, showing purchase modal');
@@ -269,7 +245,6 @@ export default function MusicScreen() {
     console.log('MusicScreen: User clicked purchase button for track:', selectedTrack?.title);
     setShowPurchaseModal(false);
     
-    // Open Stripe payment link for exclusive content
     const paymentUrl = 'https://buy.stripe.com/6oU3cx77D1hmcG92Xr6Na02';
     console.log('MusicScreen: Opening Stripe payment link:', paymentUrl);
     
@@ -288,7 +263,7 @@ export default function MusicScreen() {
   const renderTrackCard = (track: ExclusiveTrack) => {
     const hasAccess = isSubscribed || isPurchased(track.id);
     const priceDisplay = `$${track.price.toFixed(2)}`;
-    const durationDisplay = track.duration ? `${Math.floor(track.duration / 60)}:${(track.duration % 60).toString().padStart(2, '0')}` : '';
+    const durationDisplay = track.durationSeconds ? `${Math.floor(track.durationSeconds / 60)}:${(track.durationSeconds % 60).toString().padStart(2, '0')}` : '';
     
     return (
       <View key={track.id} style={styles.trackCard}>
@@ -343,7 +318,7 @@ export default function MusicScreen() {
           {isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.emptyStateSubtext}>Loading tracks...</Text>
+              <Text style={styles.emptyStateSubtext}>Loading tracks from database...</Text>
             </View>
           ) : exclusiveTracks.length > 0 ? (
             <>
@@ -360,11 +335,9 @@ export default function MusicScreen() {
           )}
         </View>
 
-        {/* Bottom padding for tab bar */}
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Purchase Modal */}
       <Modal
         visible={showPurchaseModal}
         transparent

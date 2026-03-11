@@ -1,45 +1,23 @@
 
 import React, { useState, useEffect } from 'react';
-import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Modal, Image, ActivityIndicator, Alert } from 'react-native';
+import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Modal, Image, ActivityIndicator } from 'react-native';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { useAuth } from '@/contexts/AuthContext';
 import * as DocumentPicker from 'expo-document-picker';
-
-interface ExclusiveTrack {
-  id: string;
-  title: string;
-  artistName: string;
-  description: string;
-  price: number;
-  coverArtUrl: string;
-  audioFileUrl: string;
-  fileName: string;
-  fileType: string;
-  fileSizeBytes?: number;
-  duration?: number;
-  status: 'published' | 'unpublished' | 'archived';
-  isActive: boolean;
-  uploadedBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ExclusiveVideo {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  thumbnailUrl: string;
-  videoUrl: string;
-  fileName?: string;
-  fileType?: string;
-  status: 'published' | 'unpublished' | 'archived';
-  isActive: boolean;
-  isExclusive: boolean;
-  uploadedBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import {
+  uploadAudioFile,
+  uploadCoverArt,
+  createTrack,
+  getAllTracksAdmin,
+  publishTrack,
+  unpublishTrack,
+  deleteTrack,
+  createVideo,
+  getAllVideosAdmin,
+  deleteVideo,
+  type ExclusiveTrack,
+  type ExclusiveVideo,
+} from '@/utils/api';
 
 interface UserAccount {
   id: string;
@@ -104,22 +82,19 @@ export default function AdminScreen() {
 
   const loadAllContent = async () => {
     setIsLoading(true);
-    console.log('Admin: Loading all content for management');
+    console.log('Admin: Loading all content for management from database');
     
     try {
-      // TODO: Backend Integration - GET /api/admin/tracks/all
-      // Returns: [{ id, title, artistName, description, price, coverArtUrl, audioFileUrl, fileName, status, isActive, uploadedBy, createdAt, updatedAt }]
-      // NOTE: This endpoint returns ALL tracks (published, unpublished, archived) for admin management
+      const [tracksData, videosData] = await Promise.all([
+        getAllTracksAdmin(),
+        getAllVideosAdmin(),
+      ]);
       
-      // TODO: Backend Integration - GET /api/admin/videos/all
-      // Returns: [{ id, title, description, price, thumbnailUrl, videoUrl, status, isActive, isExclusive, uploadedBy, createdAt, updatedAt }]
-      // NOTE: This endpoint returns ALL videos (published, unpublished, archived) for admin management
-      
-      // Temporary: Load from local state (will be replaced by backend)
-      setTracks([]);
-      setVideos([]);
+      setTracks(tracksData);
+      setVideos(videosData);
       
       console.log('Admin: Content loaded successfully');
+      console.log('Admin: Tracks:', tracksData.length, 'Videos:', videosData.length);
     } catch (error) {
       console.error('Admin: Error loading content:', error);
       showConfirm('Error loading content. Please try again.', () => {});
@@ -171,14 +146,12 @@ export default function AdminScreen() {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const file = result.assets[0];
         
-        // Validate file size (max 100MB)
         const maxSize = 100 * 1024 * 1024;
         if (file.size && file.size > maxSize) {
           showConfirm('Audio file is too large. Maximum size is 100MB.', () => {});
           return;
         }
         
-        // Validate file type
         const validTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/m4a'];
         if (file.mimeType && !validTypes.includes(file.mimeType) && !file.mimeType.startsWith('audio/')) {
           showConfirm('Invalid file type. Please select an MP3, WAV, or M4A file.', () => {});
@@ -208,7 +181,6 @@ export default function AdminScreen() {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const file = result.assets[0];
         
-        // Validate file size (max 10MB)
         const maxSize = 10 * 1024 * 1024;
         if (file.size && file.size > maxSize) {
           showConfirm('Image file is too large. Maximum size is 10MB.', () => {});
@@ -217,7 +189,7 @@ export default function AdminScreen() {
         
         console.log('Admin: Cover art selected:', file.name);
         setCoverArtFile(file);
-        setCoverArtUrl(''); // Clear URL input if file is selected
+        setCoverArtUrl('');
         showConfirm(`Cover art selected: ${file.name}`, () => {});
       }
     } catch (error) {
@@ -227,9 +199,10 @@ export default function AdminScreen() {
   };
 
   const handleUploadTrack = async () => {
-    console.log('Admin: Starting track upload process');
+    console.log('Admin: Starting PERMANENT track upload process');
+    console.log('Admin: This will upload to cloud storage and save to database');
+    console.log('Admin: Track will remain visible until manually deleted');
     
-    // Validation
     if (!trackTitle.trim()) {
       showConfirm('Please enter a track title', () => {});
       return;
@@ -265,75 +238,66 @@ export default function AdminScreen() {
     setUploadProgress('Preparing upload...');
     
     try {
-      // Step 1: Upload audio file to storage
-      setUploadProgress('Uploading audio file...');
-      console.log('Admin: Uploading audio file to storage');
+      setUploadProgress('Uploading audio file to permanent cloud storage...');
+      console.log('Admin: Step 1/3 - Uploading audio file to PERMANENT cloud storage');
       
-      // TODO: Backend Integration - POST /api/admin/upload/audio
-      // Body: multipart/form-data with 'audioFile' field
-      // Returns: { audioFileUrl: string, fileName: string, fileType: string, fileSizeBytes: number, duration: number }
+      const audioUploadResult = await uploadAudioFile({
+        uri: audioFile.uri,
+        name: audioFile.name,
+        type: audioFile.mimeType || 'audio/mpeg',
+        size: audioFile.size,
+      });
       
-      const audioFileUrl = audioFile.uri; // Temporary - will be replaced by backend URL
-      const fileName = audioFile.name;
-      const fileType = audioFile.mimeType || 'audio/mpeg';
-      const fileSizeBytes = audioFile.size || 0;
-      const duration = 0; // Backend will extract this
+      console.log('Admin: Audio file uploaded successfully to permanent storage');
+      console.log('Admin: Permanent URL:', audioUploadResult.audioFileUrl);
       
-      // Step 2: Upload cover art to storage
-      setUploadProgress('Uploading cover art...');
-      console.log('Admin: Uploading cover art to storage');
+      setUploadProgress('Uploading cover art to permanent cloud storage...');
+      console.log('Admin: Step 2/3 - Uploading cover art to PERMANENT cloud storage');
       
       let finalCoverArtUrl = coverArtUrl;
       
       if (coverArtFile) {
-        // TODO: Backend Integration - POST /api/admin/upload/cover-art
-        // Body: multipart/form-data with 'coverArt' field
-        // Returns: { coverArtUrl: string, fileName: string }
+        const coverArtUploadResult = await uploadCoverArt({
+          uri: coverArtFile.uri,
+          name: coverArtFile.name,
+          type: coverArtFile.mimeType || 'image/jpeg',
+        });
         
-        finalCoverArtUrl = coverArtFile.uri; // Temporary - will be replaced by backend URL
+        finalCoverArtUrl = coverArtUploadResult.coverArtUrl;
+        console.log('Admin: Cover art uploaded successfully to permanent storage');
+        console.log('Admin: Permanent URL:', finalCoverArtUrl);
       }
       
-      // Step 3: Create database record
-      setUploadProgress('Creating database record...');
-      console.log('Admin: Creating track database record');
+      setUploadProgress('Saving track to database...');
+      console.log('Admin: Step 3/3 - Creating PERMANENT database record');
       
-      // TODO: Backend Integration - POST /api/admin/tracks
-      // Body: { title, artistName, description, price, coverArtUrl, audioFileUrl, fileName, fileType, fileSizeBytes, duration, status, isActive: true }
-      // Returns: created track object with all fields
-      // CRITICAL: This must be a transactional operation - if storage succeeds but DB fails, show error
-      // CRITICAL: After successful creation, the track MUST immediately appear in GET /api/tracks (public endpoint)
-      // CRITICAL: The Music tab uses GET /api/tracks which filters by status='published' AND isActive=true
-      
-      const newTrack: ExclusiveTrack = {
-        id: Date.now().toString(), // Temporary - backend will generate UUID
+      const newTrack = await createTrack({
         title: trackTitle,
         artistName: trackArtist,
         description: trackDescription,
         price,
         coverArtUrl: finalCoverArtUrl,
-        audioFileUrl,
-        fileName,
-        fileType,
-        fileSizeBytes,
-        duration,
+        audioFileUrl: audioUploadResult.audioFileUrl,
+        fileName: audioUploadResult.fileName,
+        fileType: audioUploadResult.fileType,
+        fileSizeBytes: audioUploadResult.fileSizeBytes,
+        durationSeconds: audioUploadResult.durationSeconds,
         status: trackStatus,
         isActive: trackStatus === 'published',
         uploadedBy: userEmail || 'admin',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      });
       
-      // Update local state (will be replaced by refetch from backend)
       setTracks(prev => [newTrack, ...prev]);
       
       setUploadProgress('Upload complete!');
       
       const statusText = trackStatus === 'published' ? 'published and is now LIVE in the Music tab' : 'saved as unpublished';
-      console.log(`Admin: Track "${trackTitle}" ${statusText}`);
-      console.log('Admin: Track will immediately appear in Music tab for all users');
+      console.log(`Admin: ✅ Track "${trackTitle}" ${statusText}`);
+      console.log('Admin: ✅ Track is stored PERMANENTLY in cloud storage and database');
+      console.log('Admin: ✅ Track will remain visible until you manually delete or unpublish it');
+      console.log('Admin: ✅ Track will appear immediately in Music tab for all users');
       
-      showConfirm(`✅ Success! Track "${trackTitle}" has been ${statusText}!${trackStatus === 'published' ? '\n\nThe track is now available for purchase in the Music tab.' : ''}`, () => {
-        // Reset form
+      showConfirm(`✅ Success! Track "${trackTitle}" has been ${statusText}!\n\n${trackStatus === 'published' ? 'The track is now PERMANENTLY stored and available for purchase in the Music tab. It will remain visible until you manually remove it.' : 'The track is saved as unpublished. You can publish it later to make it visible.'}`, () => {
         setTrackTitle('');
         setTrackArtist('Afroman');
         setTrackDescription('');
@@ -345,7 +309,7 @@ export default function AdminScreen() {
         setUploadProgress('');
       });
       
-      console.log('Admin: Track upload completed successfully');
+      console.log('Admin: Track upload completed successfully - PERMANENT storage confirmed');
       
     } catch (error) {
       console.error('Admin: Error uploading track:', error);
@@ -358,9 +322,8 @@ export default function AdminScreen() {
   };
 
   const handleUploadVideo = async () => {
-    console.log('Admin: Starting video upload process');
+    console.log('Admin: Starting PERMANENT video upload process');
     
-    // Validation
     if (!videoTitle.trim()) {
       showConfirm('Please enter a video title', () => {});
       return;
@@ -390,16 +353,9 @@ export default function AdminScreen() {
     setIsUploading(true);
     
     try {
-      console.log('Admin: Creating video database record');
+      console.log('Admin: Creating PERMANENT video database record');
       
-      // TODO: Backend Integration - POST /api/admin/videos
-      // Body: { title, description, price, thumbnailUrl, videoUrl, status: 'published', isActive: true, isExclusive }
-      // Returns: created video object
-      // CRITICAL: After successful creation, the video MUST immediately appear in GET /api/videos (public endpoint)
-      // CRITICAL: The Movies tab uses GET /api/videos which filters by status='published' AND isActive=true
-      
-      const newVideo: ExclusiveVideo = {
-        id: Date.now().toString(), // Temporary - backend will generate UUID
+      const newVideo = await createVideo({
         title: videoTitle,
         description: videoDescription,
         price,
@@ -409,19 +365,16 @@ export default function AdminScreen() {
         isActive: true,
         isExclusive,
         uploadedBy: userEmail || 'admin',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      });
       
-      // Update local state
       setVideos(prev => [newVideo, ...prev]);
       
       const exclusiveText = isExclusive ? 'exclusive (for purchase)' : 'free';
-      console.log(`Admin: Video "${videoTitle}" published as ${exclusiveText} content`);
-      console.log('Admin: Video will immediately appear in Movies tab for all users');
+      console.log(`Admin: ✅ Video "${videoTitle}" published as ${exclusiveText} content`);
+      console.log('Admin: ✅ Video is stored PERMANENTLY in database');
+      console.log('Admin: ✅ Video will remain visible until you manually delete it');
       
-      showConfirm(`✅ Success! Video "${videoTitle}" has been published as ${exclusiveText} content in the Movies tab!${isExclusive ? '\n\nThe video is now available for purchase.' : '\n\nThe video is now available to watch for free.'}`, () => {
-        // Reset form
+      showConfirm(`✅ Success! Video "${videoTitle}" has been published as ${exclusiveText} content!\n\n${isExclusive ? 'The video is now PERMANENTLY stored and available for purchase in the Movies tab.' : 'The video is now available to watch for free in the Movies tab.'}\n\nIt will remain visible until you manually remove it.`, () => {
         setVideoTitle('');
         setVideoDescription('');
         setVideoPrice('');
@@ -430,7 +383,7 @@ export default function AdminScreen() {
         setIsExclusive(true);
       });
       
-      console.log('Admin: Video upload completed successfully');
+      console.log('Admin: Video upload completed successfully - PERMANENT storage confirmed');
       
     } catch (error) {
       console.error('Admin: Error uploading video:', error);
@@ -444,17 +397,14 @@ export default function AdminScreen() {
     console.log('Admin: Publishing track:', trackId);
     
     try {
-      // TODO: Backend Integration - PATCH /api/admin/tracks/:id/publish
-      // Returns: { success: true, track: updated track object }
-      // CRITICAL: This updates status='published' AND isActive=true
-      // CRITICAL: After this call, the track MUST immediately appear in GET /api/tracks (public endpoint)
+      const result = await publishTrack(trackId);
       
       setTracks(prev => prev.map(t => 
-        t.id === trackId ? { ...t, status: 'published', isActive: true, updatedAt: new Date().toISOString() } : t
+        t.id === trackId ? result.track : t
       ));
       
-      console.log('Admin: Track published - now LIVE in Music tab');
-      showConfirm('✅ Track published successfully! It is now available in the Music tab.', () => {});
+      console.log('Admin: ✅ Track published - now LIVE in Music tab');
+      showConfirm('✅ Track published successfully! It is now available in the Music tab and will remain visible until you unpublish or delete it.', () => {});
     } catch (error) {
       console.error('Admin: Error publishing track:', error);
       showConfirm('Error publishing track. Please try again.', () => {});
@@ -465,17 +415,14 @@ export default function AdminScreen() {
     console.log('Admin: Unpublishing track:', trackId);
     
     try {
-      // TODO: Backend Integration - PATCH /api/admin/tracks/:id/unpublish
-      // Returns: { success: true, track: updated track object }
-      // CRITICAL: This updates status='unpublished' AND isActive=false
-      // CRITICAL: After this call, the track MUST be removed from GET /api/tracks (public endpoint)
+      const result = await unpublishTrack(trackId);
       
       setTracks(prev => prev.map(t => 
-        t.id === trackId ? { ...t, status: 'unpublished', isActive: false, updatedAt: new Date().toISOString() } : t
+        t.id === trackId ? result.track : t
       ));
       
       console.log('Admin: Track unpublished - removed from Music tab');
-      showConfirm('Track unpublished successfully! It has been removed from the Music tab.', () => {});
+      showConfirm('Track unpublished successfully! It has been removed from the Music tab but is still stored in the database. You can republish it anytime.', () => {});
     } catch (error) {
       console.error('Admin: Error unpublishing track:', error);
       showConfirm('Error unpublishing track. Please try again.', () => {});
@@ -483,19 +430,16 @@ export default function AdminScreen() {
   };
 
   const handleDeleteTrack = (trackId: string, trackTitle: string) => {
-    showConfirm(`Are you sure you want to delete "${trackTitle}"? This will archive the track.`, async () => {
+    showConfirm(`Are you sure you want to delete "${trackTitle}"? This will archive the track and remove it from the Music tab.`, async () => {
       console.log('Admin: Deleting track:', trackId);
       
       try {
-        // TODO: Backend Integration - DELETE /api/admin/tracks/:id
-        // Returns: { success: true, message: 'Track archived successfully' }
-        // NOTE: This is a soft delete - sets isActive=false, status='archived'
-        // CRITICAL: After this call, the track MUST be removed from GET /api/tracks (public endpoint)
+        await deleteTrack(trackId);
         
         setTracks(prev => prev.filter(t => t.id !== trackId));
         setShowConfirmModal(false);
-        console.log('Admin: Track deleted - removed from Music tab');
-        showConfirm('Track deleted successfully!', () => {});
+        console.log('Admin: ✅ Track deleted - removed from Music tab');
+        showConfirm('Track deleted successfully! It has been archived and removed from the Music tab.', () => {});
       } catch (error) {
         console.error('Admin: Error deleting track:', error);
         showConfirm('Error deleting track. Please try again.', () => {});
@@ -504,18 +448,16 @@ export default function AdminScreen() {
   };
 
   const handleDeleteVideo = (videoId: string, videoTitle: string) => {
-    showConfirm(`Are you sure you want to delete "${videoTitle}"?`, async () => {
+    showConfirm(`Are you sure you want to delete "${videoTitle}"? This will remove it from the Movies tab.`, async () => {
       console.log('Admin: Deleting video:', videoId);
       
       try {
-        // TODO: Backend Integration - DELETE /api/admin/videos/:id
-        // Returns: { success: true }
-        // CRITICAL: After this call, the video MUST be removed from GET /api/videos (public endpoint)
+        await deleteVideo(videoId);
         
         setVideos(prev => prev.filter(v => v.id !== videoId));
         setShowConfirmModal(false);
-        console.log('Admin: Video deleted - removed from Movies tab');
-        showConfirm('Video deleted successfully!', () => {});
+        console.log('Admin: ✅ Video deleted - removed from Movies tab');
+        showConfirm('Video deleted successfully! It has been removed from the Movies tab.', () => {});
       } catch (error) {
         console.error('Admin: Error deleting video:', error);
         showConfirm('Error deleting video. Please try again.', () => {});
@@ -688,11 +630,10 @@ export default function AdminScreen() {
           <Text style={commonStyles.title}>{userRole}</Text>
           <Text style={commonStyles.title}>Dashboard</Text>
           <Text style={commonStyles.textSecondary}>
-            Upload content - it goes live immediately
+            Upload content - stored permanently until you delete it
           </Text>
         </View>
 
-        {/* Tab Selector */}
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tab, activeTab === 'tracks' && styles.activeTab]}
@@ -725,13 +666,12 @@ export default function AdminScreen() {
           )}
         </View>
 
-        {/* Tracks Tab */}
         {activeTab === 'tracks' && (
           <>
             <View style={commonStyles.card}>
               <Text style={styles.sectionTitle}>Upload Exclusive Track</Text>
               <Text style={styles.sectionSubtitle}>
-                Upload MP3, WAV, or M4A files - goes live immediately in Music tab
+                Upload MP3, WAV, or M4A files - stored permanently in cloud storage
               </Text>
 
               <Text style={styles.label}>Track Title *</Text>
@@ -863,7 +803,6 @@ export default function AdminScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Tracks List */}
             <View style={commonStyles.card}>
               <Text style={styles.sectionTitle}>Uploaded Tracks</Text>
               <Text style={styles.countText}>{tracks.length} tracks</Text>
@@ -927,13 +866,12 @@ export default function AdminScreen() {
           </>
         )}
 
-        {/* Videos Tab */}
         {activeTab === 'videos' && (
           <>
             <View style={commonStyles.card}>
               <Text style={styles.sectionTitle}>Upload Video</Text>
               <Text style={styles.sectionSubtitle}>
-                Add videos - goes live immediately in Movies tab
+                Add videos - stored permanently in database
               </Text>
 
               <Text style={styles.label}>Video Title *</Text>
@@ -1015,7 +953,6 @@ export default function AdminScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Videos List */}
             <View style={commonStyles.card}>
               <Text style={styles.sectionTitle}>Uploaded Videos</Text>
               <Text style={styles.countText}>{videos.length} videos</Text>
@@ -1057,7 +994,6 @@ export default function AdminScreen() {
           </>
         )}
 
-        {/* Users Tab - Admin Only */}
         {activeTab === 'users' && canManageUsers && (
           <>
             <View style={commonStyles.card}>
@@ -1128,7 +1064,6 @@ export default function AdminScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Users List */}
             <View style={commonStyles.card}>
               <Text style={styles.sectionTitle}>User Accounts</Text>
               <Text style={styles.countText}>{users.length} users</Text>
