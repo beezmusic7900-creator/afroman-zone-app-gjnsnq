@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Modal, Image, ActivityIndicator } from 'react-native';
+import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Modal, Image, ActivityIndicator, Alert } from 'react-native';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { useAuth } from '@/contexts/AuthContext';
 import * as DocumentPicker from 'expo-document-picker';
