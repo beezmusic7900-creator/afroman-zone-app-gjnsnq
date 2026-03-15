@@ -1,26 +1,99 @@
 /*
- * Run this SQL in the Supabase SQL Editor before using the app:
+ * Runs once on app launch to ensure storage buckets exist and seed data is present.
  *
- * CREATE TABLE IF NOT EXISTS tracks (
- *   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
- *   title text NOT NULL,
- *   artist_name text NOT NULL,
- *   description text,
- *   audio_url text NOT NULL,
- *   cover_art_url text,
- *   price numeric(10,2) NOT NULL DEFAULT 0,
- *   duration_seconds integer,
- *   status text NOT NULL DEFAULT 'draft',
- *   is_active boolean NOT NULL DEFAULT true,
- *   created_at timestamptz DEFAULT now(),
- *   updated_at timestamptz DEFAULT now()
- * );
+ * If the tracks table doesn't exist yet, run MIGRATION.sql first:
+ *   https://supabase.com/dashboard/project/isrybftzkcaznszjefrw/sql/new
+ *
+ * Or run the automated script:
+ *   SUPABASE_SERVICE_ROLE_KEY=<key> node scripts/run-migration.mjs
  */
 
 import { supabase } from './supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SETUP_KEY = 'supabase_setup_v3';
+// Bump this key whenever the schema changes to force re-setup on next launch.
+const SETUP_KEY = 'supabase_setup_v4';
+
+const SEED_TRACKS = [
+  {
+    title: 'Afro Vibes',
+    artist: 'OGAfroman',
+    album: 'Roots & Rhythms',
+    duration: 214,
+    audio_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    cover_url: 'https://picsum.photos/seed/ogafroman1/400/400',
+    price: 0.00,
+    is_exclusive: false,
+    status: 'published',
+    genre: 'Afrobeats',
+    description: 'A smooth afrobeats track with deep rhythms.',
+  },
+  {
+    title: 'Lagos Nights',
+    artist: 'OGAfroman',
+    album: 'Roots & Rhythms',
+    duration: 187,
+    audio_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+    cover_url: 'https://picsum.photos/seed/ogafroman2/400/400',
+    price: 1.99,
+    is_exclusive: false,
+    status: 'published',
+    genre: 'Afrobeats',
+    description: 'Inspired by the energy of Lagos nightlife.',
+  },
+  {
+    title: 'Exclusive Heat',
+    artist: 'OGAfroman',
+    album: 'Members Only',
+    duration: 243,
+    audio_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+    cover_url: 'https://picsum.photos/seed/ogafroman3/400/400',
+    price: 4.99,
+    is_exclusive: true,
+    status: 'published',
+    genre: 'Afropop',
+    description: 'Exclusive track for premium members only.',
+  },
+  {
+    title: 'Motherland',
+    artist: 'OGAfroman',
+    album: 'Heritage',
+    duration: 198,
+    audio_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
+    cover_url: 'https://picsum.photos/seed/ogafroman4/400/400',
+    price: 0.00,
+    is_exclusive: false,
+    status: 'published',
+    genre: 'Afrobeats',
+    description: 'A tribute to the African motherland.',
+  },
+  {
+    title: 'Street Anthem',
+    artist: 'OGAfroman',
+    album: 'Heritage',
+    duration: 221,
+    audio_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
+    cover_url: 'https://picsum.photos/seed/ogafroman5/400/400',
+    price: 2.99,
+    is_exclusive: false,
+    status: 'published',
+    genre: 'Afropop',
+    description: 'The streets speak through this anthem.',
+  },
+  {
+    title: 'VIP Access',
+    artist: 'OGAfroman',
+    album: 'Members Only',
+    duration: 265,
+    audio_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3',
+    cover_url: 'https://picsum.photos/seed/ogafroman6/400/400',
+    price: 9.99,
+    is_exclusive: true,
+    status: 'published',
+    genre: 'Afrobeats',
+    description: 'Exclusive VIP-only release.',
+  },
+];
 
 export async function runSupabaseSetup(): Promise<void> {
   try {
@@ -34,10 +107,10 @@ export async function runSupabaseSetup(): Promise<void> {
       try {
         const { error } = await supabase.storage.createBucket(bucketId, { public: true });
         if (error && !error.message.toLowerCase().includes('already exists')) {
-          console.warn(`[Supabase] Could not create bucket ${bucketId}:`, error.message);
+          console.warn(`[Supabase] Could not create bucket "${bucketId}":`, error.message);
         }
-      } catch (e) {
-        // ignore — bucket likely already exists
+      } catch {
+        // Bucket likely already exists — ignore
       }
     }
 
@@ -50,46 +123,24 @@ export async function runSupabaseSetup(): Promise<void> {
         .select('*', { count: 'exact', head: true });
 
       if (countError) {
-        // Table may not exist yet — that's OK, skip seeding
-        console.warn('[Supabase] Could not count tracks (table may not exist yet):', countError.message);
+        // Table may not exist yet — run MIGRATION.sql first
+        console.warn('[Supabase] tracks table not ready:', countError.message);
+        console.warn('[Supabase] Run MIGRATION.sql in the Supabase SQL Editor first.');
       } else if (!count || count === 0) {
-        const { error: seedError } = await supabase.from('tracks').insert([
-          {
-            title: 'Afrobeat Vibes',
-            artist_name: 'OGAfroman',
-            description: 'An exclusive afrobeat track',
-            audio_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-            cover_art_url: 'https://picsum.photos/seed/track1/400/400',
-            price: 4.99,
-            duration_seconds: 214,
-            status: 'published',
-            is_active: true,
-          },
-          {
-            title: 'Lagos Nights',
-            artist_name: 'OGAfroman',
-            description: 'Late night Lagos energy',
-            audio_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-            cover_art_url: 'https://picsum.photos/seed/track2/400/400',
-            price: 4.99,
-            duration_seconds: 187,
-            status: 'published',
-            is_active: true,
-          },
-        ]);
+        const { error: seedError } = await supabase.from('tracks').insert(SEED_TRACKS);
         if (seedError) {
-          console.warn('[Supabase] Seed error (table may not exist yet):', seedError.message);
+          console.warn('[Supabase] Seed error:', seedError.message);
         } else {
-          console.log('[Supabase] Sample tracks seeded successfully');
+          console.log('[Supabase] 6 sample tracks seeded successfully.');
         }
       }
     } catch (e) {
-      // Silently ignore — table doesn't exist yet
+      console.warn('[Supabase] Seeding skipped:', e);
     }
 
     await AsyncStorage.setItem(SETUP_KEY, 'true');
-    console.log('[Supabase] Setup v3 complete');
+    console.log('[Supabase] Setup v4 complete.');
   } catch (err) {
-    console.warn('[Supabase] Setup skipped or already done:', err);
+    console.warn('[Supabase] Setup error:', err);
   }
 }

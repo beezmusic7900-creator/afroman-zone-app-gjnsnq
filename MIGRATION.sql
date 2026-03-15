@@ -1,86 +1,93 @@
 -- ============================================================================
--- OGAfroman Music Tracks — Database Migration
--- Run this once in the Supabase SQL Editor:
+-- OGAfroman Music Tracks — Database Migration (v3 schema)
+-- Run this in the Supabase SQL Editor:
 --   https://supabase.com/dashboard/project/isrybftzkcaznszjefrw/sql/new
 -- ============================================================================
 
--- 1. Migrate existing tracks table (audio_file_url → audio_url) OR create fresh
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'tracks' AND column_name = 'audio_file_url'
-  ) THEN
-    -- Migrate from v1 schema
-    ALTER TABLE tracks ADD COLUMN IF NOT EXISTS audio_url text;
-    UPDATE tracks SET audio_url = audio_file_url WHERE audio_url IS NULL;
-    ALTER TABLE tracks DROP COLUMN IF EXISTS audio_file_url;
-    ALTER TABLE tracks DROP COLUMN IF EXISTS file_name;
-    ALTER TABLE tracks DROP COLUMN IF EXISTS file_type;
-    ALTER TABLE tracks DROP COLUMN IF EXISTS file_size_bytes;
-    ALTER TABLE tracks DROP COLUMN IF EXISTS uploaded_by;
-    ALTER TABLE tracks ALTER COLUMN audio_url SET NOT NULL;
-    ALTER TABLE tracks ALTER COLUMN artist_name SET NOT NULL;
-    ALTER TABLE tracks ALTER COLUMN price SET NOT NULL;
-    ALTER TABLE tracks ALTER COLUMN status SET NOT NULL;
-    ALTER TABLE tracks ALTER COLUMN is_active SET NOT NULL;
-    RAISE NOTICE 'Migrated tracks table from v1 to v2 schema.';
-  ELSE
-    -- Create fresh v2 table
-    CREATE TABLE IF NOT EXISTS tracks (
-      id               uuid           PRIMARY KEY DEFAULT gen_random_uuid(),
-      title            text           NOT NULL,
-      artist_name      text           NOT NULL,
-      description      text,
-      audio_url        text           NOT NULL,
-      cover_art_url    text,
-      price            numeric(10,2)  NOT NULL DEFAULT 0,
-      duration_seconds integer,
-      status           text           NOT NULL DEFAULT 'draft',
-      is_active        boolean        NOT NULL DEFAULT true,
-      created_at       timestamptz    DEFAULT now(),
-      updated_at       timestamptz    DEFAULT now()
-    );
-    RAISE NOTICE 'Created fresh tracks table (v2 schema).';
-  END IF;
-END $$;
+-- 1. Drop old table if it exists with the legacy schema, then create fresh
+DROP TABLE IF EXISTS tracks;
 
--- 2. Disable RLS (admin mutations enforced at the API layer)
-ALTER TABLE tracks DISABLE ROW LEVEL SECURITY;
+CREATE TABLE tracks (
+  id           uuid           PRIMARY KEY DEFAULT gen_random_uuid(),
+  title        text           NOT NULL,
+  artist       text           NOT NULL,
+  album        text,
+  duration     integer,
+  audio_url    text,
+  cover_url    text,
+  price        numeric(10,2)  DEFAULT 0,
+  is_exclusive boolean        DEFAULT false,
+  status       text           DEFAULT 'draft',
+  genre        text,
+  description  text,
+  created_at   timestamptz    DEFAULT now(),
+  updated_at   timestamptz    DEFAULT now()
+);
 
--- 3. Seed 2 sample tracks (only if table is empty)
-INSERT INTO tracks (title, artist_name, description, audio_url, cover_art_url, price, duration_seconds, status, is_active)
-SELECT v.title, v.artist_name, v.description, v.audio_url, v.cover_art_url, v.price, v.duration_seconds, v.status, v.is_active
-FROM (VALUES
-  (
-    'Lagos Nights',
-    'OGAfroman',
-    'A smooth afrobeats track with deep basslines and melodic hooks.',
-    'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    'https://picsum.photos/seed/ogafroman1/400/400',
-    1.99::numeric(10,2),
-    214,
-    'published',
-    true
-  ),
-  (
-    'Afro Vibes',
-    'OGAfroman',
-    'High energy afro fusion guaranteed to get you moving.',
-    'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-    'https://picsum.photos/seed/ogafroman2/400/400',
-    1.99::numeric(10,2),
-    187,
-    'published',
-    true
-  )
-) AS v(title, artist_name, description, audio_url, cover_art_url, price, duration_seconds, status, is_active)
-WHERE NOT EXISTS (SELECT 1 FROM tracks LIMIT 1);
+-- 2. Enable RLS
+ALTER TABLE tracks ENABLE ROW LEVEL SECURITY;
 
--- 4. Storage buckets — run these separately if the SQL editor doesn't support storage API:
---    Dashboard → Storage → New bucket → "tracks-audio" (public)
---    Dashboard → Storage → New bucket → "tracks-covers" (public)
---
---    Or via the Supabase JS client (already handled in setupSupabase.ts on first app load).
+-- 3. Policies
+-- Public read for published tracks
+DROP POLICY IF EXISTS "Public read published tracks" ON tracks;
+CREATE POLICY "Public read published tracks"
+  ON tracks FOR SELECT
+  USING (status = 'published');
 
-SELECT 'Migration complete. tracks table is ready.' AS result;
+-- Permissive full-access policy (no auth required for now)
+DROP POLICY IF EXISTS "Allow all operations" ON tracks;
+CREATE POLICY "Allow all operations"
+  ON tracks FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
+-- 4. Seed sample tracks
+INSERT INTO tracks (title, artist, album, duration, audio_url, cover_url, price, is_exclusive, status, genre, description) VALUES
+(
+  'Afro Vibes', 'OGAfroman', 'Roots & Rhythms', 214,
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+  'https://picsum.photos/seed/ogafroman1/400/400',
+  0.00, false, 'published', 'Afrobeats',
+  'A smooth afrobeats track with deep rhythms.'
+),
+(
+  'Lagos Nights', 'OGAfroman', 'Roots & Rhythms', 187,
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+  'https://picsum.photos/seed/ogafroman2/400/400',
+  1.99, false, 'published', 'Afrobeats',
+  'Inspired by the energy of Lagos nightlife.'
+),
+(
+  'Exclusive Heat', 'OGAfroman', 'Members Only', 243,
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+  'https://picsum.photos/seed/ogafroman3/400/400',
+  4.99, true, 'published', 'Afropop',
+  'Exclusive track for premium members only.'
+),
+(
+  'Motherland', 'OGAfroman', 'Heritage', 198,
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
+  'https://picsum.photos/seed/ogafroman4/400/400',
+  0.00, false, 'published', 'Afrobeats',
+  'A tribute to the African motherland.'
+),
+(
+  'Street Anthem', 'OGAfroman', 'Heritage', 221,
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
+  'https://picsum.photos/seed/ogafroman5/400/400',
+  2.99, false, 'published', 'Afropop',
+  'The streets speak through this anthem.'
+),
+(
+  'VIP Access', 'OGAfroman', 'Members Only', 265,
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3',
+  'https://picsum.photos/seed/ogafroman6/400/400',
+  9.99, true, 'published', 'Afrobeats',
+  'Exclusive VIP-only release.'
+);
+
+-- 5. Storage buckets — create via the JS client (see setupSupabase.ts) or manually:
+--    Dashboard → Storage → New bucket → "tracks-audio"  (toggle Public on)
+--    Dashboard → Storage → New bucket → "tracks-covers" (toggle Public on)
+
+SELECT 'Migration v3 complete.' AS result;
