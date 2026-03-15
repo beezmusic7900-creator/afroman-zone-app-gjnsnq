@@ -271,7 +271,7 @@ export default function AdminScreen() {
       
       const newTrack = await createTrackV2({
         title: trackTitle,
-        artist_name: trackArtist,
+        artist: trackArtist,
         description: trackDescription,
         price,
         cover_art_url: finalCoverArtUrl || undefined,
@@ -810,7 +810,7 @@ export default function AdminScreen() {
                   const priceDisplay = `$${Number(track.price).toFixed(2)}`;
                   const statusDisplay = track.status.charAt(0).toUpperCase() + track.status.slice(1);
                   const statusColor = track.status === 'published' ? colors.accent : colors.textSecondary;
-                  const artistDisplay = (track as any).artistName ?? track.artist_name;
+                  const artistDisplay = track.artist;
                   
                   return (
                     <View key={track.id} style={styles.contentItem}>

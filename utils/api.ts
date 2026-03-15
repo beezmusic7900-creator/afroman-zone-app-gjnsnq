@@ -21,7 +21,7 @@ const uploadClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 export interface Track {
   id: string;
   title: string;
-  artist_name: string;
+  artist: string;
   description: string | null;
   audio_url: string;
   cover_art_url: string | null;
@@ -95,7 +95,7 @@ function mapTrackRow(row: any): Track {
   return {
     id: row.id,
     title: row.title,
-    artist_name: row.artist_name,
+    artist: row.artist,
     description: row.description ?? null,
     audio_url: row.audio_url,
     cover_art_url: row.cover_art_url ?? null,
@@ -112,7 +112,7 @@ function trackToExclusive(t: Track): ExclusiveTrack {
   return {
     id: t.id,
     title: t.title,
-    artistName: t.artist_name,
+    artistName: t.artist,
     description: t.description ?? '',
     price: t.price,
     coverArtUrl: t.cover_art_url ?? '',
@@ -191,7 +191,7 @@ export async function getAllTracksAdmin(): Promise<ExclusiveTrack[]> {
 
 export interface CreateTrackInput {
   title: string;
-  artist_name: string;
+  artist: string;
   description?: string;
   audio_url: string;
   cover_art_url?: string;
@@ -205,7 +205,7 @@ export async function createTrackV2(input: CreateTrackInput): Promise<Track> {
     .from('tracks')
     .insert({
       title: input.title,
-      artist_name: input.artist_name,
+      artist: input.artist,
       description: input.description ?? null,
       audio_url: input.audio_url,
       cover_art_url: input.cover_art_url ?? null,
@@ -242,7 +242,7 @@ export async function createTrack(trackData: {
     .from('tracks')
     .insert({
       title: trackData.title,
-      artist_name: trackData.artistName,
+      artist: trackData.artistName,
       description: trackData.description,
       price: trackData.price,
       cover_art_url: trackData.coverArtUrl,
@@ -262,7 +262,7 @@ export async function createTrack(trackData: {
 
 export interface UpdateTrackInput {
   title?: string;
-  artist_name?: string;
+  artist?: string;
   description?: string;
   audio_url?: string;
   cover_art_url?: string;
@@ -274,7 +274,7 @@ export interface UpdateTrackInput {
 export async function updateTrackV2(id: string, input: UpdateTrackInput): Promise<Track> {
   const patch: any = { updated_at: new Date().toISOString() };
   if (input.title !== undefined) patch.title = input.title;
-  if (input.artist_name !== undefined) patch.artist_name = input.artist_name;
+  if (input.artist !== undefined) patch.artist = input.artist;
   if (input.description !== undefined) patch.description = input.description;
   if (input.audio_url !== undefined) patch.audio_url = input.audio_url;
   if (input.cover_art_url !== undefined) patch.cover_art_url = input.cover_art_url;
@@ -299,7 +299,7 @@ export async function updateTrack(
 ): Promise<ExclusiveTrack> {
   const patch: any = { updated_at: new Date().toISOString() };
   if (updates.title !== undefined) patch.title = updates.title;
-  if (updates.artistName !== undefined) patch.artist_name = updates.artistName;
+  if (updates.artistName !== undefined) patch.artist = updates.artistName;
   if (updates.description !== undefined) patch.description = updates.description;
   if (updates.price !== undefined) patch.price = updates.price;
   if (updates.coverArtUrl !== undefined) patch.cover_art_url = updates.coverArtUrl;
