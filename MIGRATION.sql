@@ -24,17 +24,15 @@ CREATE TABLE tracks (
   updated_at   timestamptz    DEFAULT now()
 );
 
--- 2. Enable RLS
+-- 2. Enable RLS on tracks
 ALTER TABLE tracks ENABLE ROW LEVEL SECURITY;
 
--- 3. Policies
--- Public read for published tracks
+-- 3. Policies on tracks
 DROP POLICY IF EXISTS "Public read published tracks" ON tracks;
 CREATE POLICY "Public read published tracks"
   ON tracks FOR SELECT
   USING (status = 'published');
 
--- Permissive full-access policy (no auth required for now)
 DROP POLICY IF EXISTS "Allow all operations" ON tracks;
 CREATE POLICY "Allow all operations"
   ON tracks FOR ALL
@@ -86,8 +84,71 @@ INSERT INTO tracks (title, artist, album, duration, audio_url, cover_url, price,
   'Exclusive VIP-only release.'
 );
 
--- 5. Storage buckets — create via the JS client (see setupSupabase.ts) or manually:
---    Dashboard → Storage → New bucket → "tracks-audio"  (toggle Public on)
---    Dashboard → Storage → New bucket → "tracks-covers" (toggle Public on)
+-- ============================================================================
+-- 5. Storage buckets — ensure they exist
+-- ============================================================================
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('tracks-audio', 'tracks-audio', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
 
-SELECT 'Migration v3 complete.' AS result;
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('tracks-covers', 'tracks-covers', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- ============================================================================
+-- 6. Storage RLS — drop ALL existing policies on storage.objects, then
+--    recreate permissive ones for tracks-audio and tracks-covers so that
+--    unauthenticated uploads succeed without RLS violations.
+-- ============================================================================
+DO $$
+DECLARE
+  pol RECORD;
+BEGIN
+  FOR pol IN
+    SELECT policyname
+    FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON storage.objects', pol.policyname);
+  END LOOP;
+END $$;
+
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+-- tracks-audio: fully open (no auth required)
+CREATE POLICY "tracks-audio: allow select"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'tracks-audio');
+
+CREATE POLICY "tracks-audio: allow insert"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'tracks-audio');
+
+CREATE POLICY "tracks-audio: allow update"
+  ON storage.objects FOR UPDATE
+  USING (bucket_id = 'tracks-audio')
+  WITH CHECK (bucket_id = 'tracks-audio');
+
+CREATE POLICY "tracks-audio: allow delete"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'tracks-audio');
+
+-- tracks-covers: fully open (no auth required)
+CREATE POLICY "tracks-covers: allow select"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'tracks-covers');
+
+CREATE POLICY "tracks-covers: allow insert"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'tracks-covers');
+
+CREATE POLICY "tracks-covers: allow update"
+  ON storage.objects FOR UPDATE
+  USING (bucket_id = 'tracks-covers')
+  WITH CHECK (bucket_id = 'tracks-covers');
+
+CREATE POLICY "tracks-covers: allow delete"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'tracks-covers');
+
+SELECT 'Migration v3 + storage RLS fix complete.' AS result;

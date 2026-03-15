@@ -1,5 +1,5 @@
 /**
- * Applies the tracks table migration + creates storage buckets via Supabase APIs.
+ * Applies the tracks table migration + storage bucket RLS fix via Supabase APIs.
  * Run once: SUPABASE_SERVICE_ROLE_KEY=<key> node scripts/run-migration.mjs
  *
  * Get your service role key from:
@@ -10,7 +10,7 @@ const PROJECT_REF = 'isrybftzkcaznszjefrw';
 const SUPABASE_URL = `https://${PROJECT_REF}.supabase.co`;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 
-const MIGRATION_SQL = `
+const TRACKS_MIGRATION_SQL = `
 -- Drop old table and recreate with v3 schema
 DROP TABLE IF EXISTS tracks;
 
@@ -31,23 +31,19 @@ CREATE TABLE tracks (
   updated_at   timestamptz    DEFAULT now()
 );
 
--- Enable RLS
 ALTER TABLE tracks ENABLE ROW LEVEL SECURITY;
 
--- Public read for published tracks
 DROP POLICY IF EXISTS "Public read published tracks" ON tracks;
 CREATE POLICY "Public read published tracks"
   ON tracks FOR SELECT
   USING (status = 'published');
 
--- Permissive full-access policy (no auth required for now)
 DROP POLICY IF EXISTS "Allow all operations" ON tracks;
 CREATE POLICY "Allow all operations"
   ON tracks FOR ALL
   USING (true)
   WITH CHECK (true);
 
--- Seed sample tracks
 INSERT INTO tracks (title, artist, album, duration, audio_url, cover_url, price, is_exclusive, status, genre, description) VALUES
 ('Afro Vibes', 'OGAfroman', 'Roots & Rhythms', 214,
  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
@@ -75,7 +71,72 @@ INSERT INTO tracks (title, artist, album, duration, audio_url, cover_url, price,
  9.99, true, 'published', 'Afrobeats', 'Exclusive VIP-only release.');
 `;
 
-async function runSQL(sql) {
+// Storage RLS fix — run as a separate statement because the DO $$ block
+// must be the only statement in the query for some Supabase SQL endpoints.
+const STORAGE_BUCKETS_SQL = `
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('tracks-audio', 'tracks-audio', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('tracks-covers', 'tracks-covers', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+`;
+
+const DROP_STORAGE_POLICIES_SQL = `
+DO $$
+DECLARE
+  pol RECORD;
+BEGIN
+  FOR pol IN
+    SELECT policyname
+    FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON storage.objects', pol.policyname);
+  END LOOP;
+END $$;
+`;
+
+const CREATE_STORAGE_POLICIES_SQL = `
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "tracks-audio: allow select"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'tracks-audio');
+
+CREATE POLICY "tracks-audio: allow insert"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'tracks-audio');
+
+CREATE POLICY "tracks-audio: allow update"
+  ON storage.objects FOR UPDATE
+  USING (bucket_id = 'tracks-audio')
+  WITH CHECK (bucket_id = 'tracks-audio');
+
+CREATE POLICY "tracks-audio: allow delete"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'tracks-audio');
+
+CREATE POLICY "tracks-covers: allow select"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'tracks-covers');
+
+CREATE POLICY "tracks-covers: allow insert"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'tracks-covers');
+
+CREATE POLICY "tracks-covers: allow update"
+  ON storage.objects FOR UPDATE
+  USING (bucket_id = 'tracks-covers')
+  WITH CHECK (bucket_id = 'tracks-covers');
+
+CREATE POLICY "tracks-covers: allow delete"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'tracks-covers');
+`;
+
+async function runSQL(sql, label) {
   // Try the Management API (works with service role key as a personal access token)
   const mgmtUrl = `https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`;
   const res = await fetch(mgmtUrl, {
@@ -115,17 +176,21 @@ async function ensureBucket(bucketId) {
     'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
   };
 
-  // Check if bucket already exists
   const listRes = await fetch(url, { headers });
   if (listRes.ok) {
     const buckets = await listRes.json();
     if (Array.isArray(buckets) && buckets.find(b => b.id === bucketId)) {
-      console.log(`  Bucket "${bucketId}" already exists — skipping.`);
+      console.log(`  Bucket "${bucketId}" already exists — ensuring public=true.`);
+      // Patch to make sure it's public
+      await fetch(`${url}/${bucketId}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ public: true }),
+      });
       return;
     }
   }
 
-  // Create the bucket
   const createRes = await fetch(url, {
     method: 'POST',
     headers,
@@ -144,6 +209,20 @@ async function ensureBucket(bucketId) {
   }
 }
 
+async function step(label, sql) {
+  process.stdout.write(`  ${label}... `);
+  const result = await runSQL(sql, label);
+  if (result.ok) {
+    console.log('OK');
+  } else {
+    console.log(`FAILED (${result.status})`);
+    console.error(`  Error: ${result.body}`);
+    console.error('\n  Tip: Paste MIGRATION.sql directly into the Supabase SQL Editor:');
+    console.error(`  https://supabase.com/dashboard/project/${PROJECT_REF}/sql/new`);
+    process.exit(1);
+  }
+}
+
 async function main() {
   if (!SERVICE_ROLE_KEY) {
     console.error('ERROR: SUPABASE_SERVICE_ROLE_KEY is not set.');
@@ -155,28 +234,26 @@ async function main() {
 
   console.log('=== OGAfroman Supabase Setup ===\n');
 
-  // 1. Run SQL migration
   console.log('1. Applying tracks table migration...');
-  const result = await runSQL(MIGRATION_SQL);
-  if (result.ok) {
-    console.log('   Migration applied successfully.\n');
-  } else {
-    console.error(`   Migration FAILED (${result.status}): ${result.body}`);
-    console.error('\n   Tip: If the Management API rejects your key, paste MIGRATION.sql');
-    console.error('   directly into the Supabase SQL Editor:');
-    console.error(`   https://supabase.com/dashboard/project/${PROJECT_REF}/sql/new`);
-    process.exit(1);
-  }
+  await step('tracks table + RLS + seed data', TRACKS_MIGRATION_SQL);
+  console.log();
 
-  // 2. Create storage buckets
   console.log('2. Ensuring storage buckets exist...');
   await ensureBucket('tracks-audio');
   await ensureBucket('tracks-covers');
+  console.log();
 
-  console.log('\n=== Setup complete ===');
-  console.log('tracks table: ready (RLS enabled, 6 seed tracks inserted)');
-  console.log('tracks-audio: public bucket');
-  console.log('tracks-covers: public bucket');
+  console.log('3. Fixing storage RLS policies...');
+  await step('Insert bucket rows into storage.buckets', STORAGE_BUCKETS_SQL);
+  await step('Drop all existing storage.objects policies', DROP_STORAGE_POLICIES_SQL);
+  await step('Create permissive policies for tracks-audio + tracks-covers', CREATE_STORAGE_POLICIES_SQL);
+  console.log();
+
+  console.log('=== Setup complete ===');
+  console.log('tracks table    : ready (RLS enabled, 6 seed tracks inserted)');
+  console.log('tracks-audio    : public bucket, open RLS policies');
+  console.log('tracks-covers   : public bucket, open RLS policies');
+  console.log('\nUnauthenticated uploads to both buckets will now succeed.');
 }
 
 main();
