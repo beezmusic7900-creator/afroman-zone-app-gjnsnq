@@ -5,17 +5,17 @@ import { colors, commonStyles } from '@/styles/commonStyles';
 import { useAuth } from '@/contexts/AuthContext';
 import * as DocumentPicker from 'expo-document-picker';
 import {
-  uploadAudioFile,
-  uploadCoverArt,
-  createTrack,
-  getAllTracksAdmin,
+  uploadAudio,
+  uploadCover,
+  createTrackV2,
+  listAllTracksAdmin,
   publishTrack,
   unpublishTrack,
   deleteTrack,
   createVideo,
   getAllVideosAdmin,
   deleteVideo,
-  type ExclusiveTrack,
+  type Track,
   type ExclusiveVideo,
 } from '@/utils/api';
 
@@ -67,7 +67,7 @@ export default function AdminScreen() {
   const [uploadProgress, setUploadProgress] = useState('');
   
   // Content lists
-  const [tracks, setTracks] = useState<ExclusiveTrack[]>([]);
+  const [tracks, setTracks] = useState<Track[]>([]);
   const [videos, setVideos] = useState<ExclusiveVideo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -77,7 +77,7 @@ export default function AdminScreen() {
     
     try {
       const [tracksData, videosData] = await Promise.all([
-        getAllTracksAdmin(),
+        listAllTracksAdmin(),
         getAllVideosAdmin(),
       ]);
       
@@ -240,15 +240,14 @@ export default function AdminScreen() {
       setUploadProgress('Uploading audio file to permanent cloud storage...');
       console.log('Admin: Step 1/3 - Uploading audio file to PERMANENT cloud storage');
       
-      const audioUploadResult = await uploadAudioFile({
+      const audioUploadResult = await uploadAudio({
         uri: audioFile.uri,
         name: audioFile.name,
         type: audioFile.mimeType || 'audio/mpeg',
-        size: audioFile.size,
       });
       
       console.log('Admin: Audio file uploaded successfully to permanent storage');
-      console.log('Admin: Permanent URL:', audioUploadResult.audioFileUrl);
+      console.log('Admin: Permanent URL:', audioUploadResult.url);
       
       setUploadProgress('Uploading cover art to permanent cloud storage...');
       console.log('Admin: Step 2/3 - Uploading cover art to PERMANENT cloud storage');
@@ -256,13 +255,13 @@ export default function AdminScreen() {
       let finalCoverArtUrl = coverArtUrl;
       
       if (coverArtFile) {
-        const coverArtUploadResult = await uploadCoverArt({
+        const coverUploadResult = await uploadCover({
           uri: coverArtFile.uri,
           name: coverArtFile.name,
           type: coverArtFile.mimeType || 'image/jpeg',
         });
         
-        finalCoverArtUrl = coverArtUploadResult.coverArtUrl;
+        finalCoverArtUrl = coverUploadResult.url;
         console.log('Admin: Cover art uploaded successfully to permanent storage');
         console.log('Admin: Permanent URL:', finalCoverArtUrl);
       }
@@ -270,20 +269,14 @@ export default function AdminScreen() {
       setUploadProgress('Saving track to database...');
       console.log('Admin: Step 3/3 - Creating PERMANENT database record');
       
-      const newTrack = await createTrack({
+      const newTrack = await createTrackV2({
         title: trackTitle,
-        artistName: trackArtist,
+        artist_name: trackArtist,
         description: trackDescription,
         price,
-        coverArtUrl: finalCoverArtUrl,
-        audioFileUrl: audioUploadResult.audioFileUrl,
-        fileName: audioUploadResult.fileName,
-        fileType: audioUploadResult.fileType,
-        fileSizeBytes: audioUploadResult.fileSizeBytes,
-        durationSeconds: audioUploadResult.durationSeconds,
-        status: trackStatus,
-        isActive: trackStatus === 'published',
-        uploadedBy: userEmail || 'admin',
+        cover_art_url: finalCoverArtUrl || undefined,
+        audio_url: audioUploadResult.url,
+        duration_seconds: undefined,
       });
       
       setTracks(prev => [newTrack, ...prev]);
@@ -396,10 +389,10 @@ export default function AdminScreen() {
     console.log('Admin: Publishing track:', trackId);
     
     try {
-      const result = await publishTrack(trackId);
+      const updatedTrack = await publishTrack(trackId);
       
       setTracks(prev => prev.map(t => 
-        t.id === trackId ? result.track : t
+        t.id === trackId ? updatedTrack : t
       ));
       
       console.log('Admin: ✅ Track published - now LIVE in Music tab');
@@ -414,10 +407,10 @@ export default function AdminScreen() {
     console.log('Admin: Unpublishing track:', trackId);
     
     try {
-      const result = await unpublishTrack(trackId);
+      const updatedTrack = await unpublishTrack(trackId);
       
       setTracks(prev => prev.map(t => 
-        t.id === trackId ? result.track : t
+        t.id === trackId ? updatedTrack : t
       ));
       
       console.log('Admin: Track unpublished - removed from Music tab');
@@ -812,22 +805,21 @@ export default function AdminScreen() {
                 <Text style={styles.emptyText}>No tracks uploaded yet</Text>
               ) : (
                 tracks.map((track) => {
-                  const priceDisplay = `$${track.price.toFixed(2)}`;
+                  const priceDisplay = `$${Number(track.price).toFixed(2)}`;
                   const statusDisplay = track.status.charAt(0).toUpperCase() + track.status.slice(1);
                   const statusColor = track.status === 'published' ? colors.accent : colors.textSecondary;
+                  const artistDisplay = (track as any).artistName ?? track.artist_name;
                   
                   return (
                     <View key={track.id} style={styles.contentItem}>
                       <View style={styles.contentInfo}>
                         <Text style={styles.contentTitle}>{track.title}</Text>
-                        <Text style={styles.contentDescription}>{track.artistName}</Text>
+                        <Text style={styles.contentDescription}>{artistDisplay}</Text>
                         <View style={styles.contentMetaRow}>
                           <Text style={[styles.contentMeta, { color: statusColor }]}>
                             {statusDisplay}
                           </Text>
-                          <Text style={styles.contentMeta}>•</Text>
-                          <Text style={styles.contentMeta}>{track.fileName}</Text>
-                          <Text style={styles.contentPrice}>{priceDisplay}</Text>
+                          <Text style={styles.contentMeta}>{priceDisplay}</Text>
                         </View>
                       </View>
                       <View style={styles.actionButtons}>

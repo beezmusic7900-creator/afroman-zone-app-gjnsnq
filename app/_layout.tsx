@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { CartProvider } from '@/contexts/CartContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { PurchaseProvider } from '@/contexts/PurchaseContext';
+import { runSupabaseSetup } from '@/utils/setupSupabase';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -13,6 +14,11 @@ export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+
+  useEffect(() => {
+    // Run DB migration + seed on first launch (idempotent, guarded by AsyncStorage flag)
+    runSupabaseSetup();
+  }, []);
 
   useEffect(() => {
     if (loaded || error) {
