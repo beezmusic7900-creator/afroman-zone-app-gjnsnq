@@ -35,20 +35,18 @@ export interface CartItem {
 export interface ExclusiveTrack {
   id: string;
   title: string;
-  artistName: string;
-  description: string;
-  price: number;
-  coverArtUrl: string;
-  audioFileUrl: string;
-  fileName: string;
-  fileType: string;
-  fileSizeBytes?: number;
+  artist: string;
+  description?: string;
+  price?: number;
+  cover_url?: string;
+  audio_url: string;
   duration?: number;
-  status: 'published' | 'unpublished' | 'archived';
-  isActive: boolean;
-  uploadedBy: string;
-  createdAt: string;
-  updatedAt: string;
+  is_exclusive?: boolean;
+  status: string;
+  genre?: string;
+  album?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ExclusiveVideo {

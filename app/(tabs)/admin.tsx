@@ -274,9 +274,9 @@ export default function AdminScreen() {
         artist: trackArtist,
         description: trackDescription,
         price,
-        cover_art_url: finalCoverArtUrl || undefined,
+        cover_url: finalCoverArtUrl || undefined,
         audio_url: audioUploadResult.url,
-        duration_seconds: undefined,
+        duration: undefined,
         status: trackStatus === 'unpublished' ? 'draft' : 'published',
       });
       

@@ -17,17 +17,20 @@ const uploadClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 // TYPE DEFINITIONS
 // ============================================================================
 
-/** Canonical Track type — matches the OpenAPI spec exactly. */
+/** Canonical Track type — matches the database schema exactly. */
 export interface Track {
   id: string;
   title: string;
   artist: string;
-  description: string | null;
+  album?: string;
+  duration?: number;
   audio_url: string;
-  cover_art_url: string | null;
-  price: number;
-  duration_seconds: number | null;
-  status: 'draft' | 'published';
+  cover_url?: string;
+  price?: number;
+  is_exclusive?: boolean;
+  status: string;
+  genre?: string;
+  description?: string;
   created_at: string;
   updated_at: string;
 }
@@ -96,12 +99,15 @@ function mapTrackRow(row: any): Track {
     id: row.id,
     title: row.title,
     artist: row.artist,
-    description: row.description ?? null,
+    album: row.album ?? undefined,
+    duration: row.duration ?? undefined,
     audio_url: row.audio_url,
-    cover_art_url: row.cover_art_url ?? null,
-    price: Number(row.price ?? 0),
-    duration_seconds: row.duration_seconds ?? null,
+    cover_url: row.cover_url ?? undefined,
+    price: row.price !== undefined && row.price !== null ? Number(row.price) : undefined,
+    is_exclusive: row.is_exclusive ?? undefined,
     status: row.status,
+    genre: row.genre ?? undefined,
+    description: row.description ?? undefined,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -114,14 +120,14 @@ function trackToExclusive(t: Track): ExclusiveTrack {
     title: t.title,
     artistName: t.artist,
     description: t.description ?? '',
-    price: t.price,
-    coverArtUrl: t.cover_art_url ?? '',
+    price: t.price ?? 0,
+    coverArtUrl: t.cover_url ?? '',
     audioFileUrl: t.audio_url,
     fileName: '',
     fileType: '',
     fileSizeBytes: 0,
-    durationSeconds: t.duration_seconds ?? 0,
-    status: t.status,
+    durationSeconds: t.duration ?? 0,
+    status: t.status as 'draft' | 'published',
     uploadedBy: '',
     createdAt: t.created_at,
     updatedAt: t.updated_at,
@@ -194,9 +200,12 @@ export interface CreateTrackInput {
   artist: string;
   description?: string;
   audio_url: string;
-  cover_art_url?: string;
-  price: number;
-  duration_seconds?: number;
+  cover_url?: string;
+  price?: number;
+  duration?: number;
+  is_exclusive?: boolean;
+  genre?: string;
+  album?: string;
   status?: 'draft' | 'published';
 }
 
@@ -208,9 +217,12 @@ export async function createTrackV2(input: CreateTrackInput): Promise<Track> {
       artist: input.artist,
       description: input.description ?? null,
       audio_url: input.audio_url,
-      cover_art_url: input.cover_art_url ?? null,
-      price: input.price,
-      duration_seconds: input.duration_seconds ?? null,
+      cover_url: input.cover_url ?? null,
+      price: input.price ?? null,
+      duration: input.duration ?? null,
+      is_exclusive: input.is_exclusive ?? null,
+      genre: input.genre ?? null,
+      album: input.album ?? null,
       status: input.status ?? 'draft',
     })
     .select()
@@ -265,9 +277,12 @@ export interface UpdateTrackInput {
   artist?: string;
   description?: string;
   audio_url?: string;
-  cover_art_url?: string;
+  cover_url?: string;
   price?: number;
-  duration_seconds?: number;
+  duration?: number;
+  is_exclusive?: boolean;
+  genre?: string;
+  album?: string;
   status?: 'draft' | 'published';
 }
 
@@ -277,9 +292,12 @@ export async function updateTrackV2(id: string, input: UpdateTrackInput): Promis
   if (input.artist !== undefined) patch.artist = input.artist;
   if (input.description !== undefined) patch.description = input.description;
   if (input.audio_url !== undefined) patch.audio_url = input.audio_url;
-  if (input.cover_art_url !== undefined) patch.cover_art_url = input.cover_art_url;
+  if (input.cover_url !== undefined) patch.cover_url = input.cover_url;
   if (input.price !== undefined) patch.price = input.price;
-  if (input.duration_seconds !== undefined) patch.duration_seconds = input.duration_seconds;
+  if (input.duration !== undefined) patch.duration = input.duration;
+  if (input.is_exclusive !== undefined) patch.is_exclusive = input.is_exclusive;
+  if (input.genre !== undefined) patch.genre = input.genre;
+  if (input.album !== undefined) patch.album = input.album;
   if (input.status !== undefined) patch.status = input.status;
 
   const { data, error } = await supabase

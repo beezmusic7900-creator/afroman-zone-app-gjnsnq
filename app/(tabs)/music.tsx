@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePurchase } from '@/contexts/PurchaseContext';
 import { useFocusEffect } from '@react-navigation/native';
-import { getPublishedTracks, type ExclusiveTrack } from '@/utils/api';
+import { listPublishedTracks, type Track } from '@/utils/api';
 
 const styles = StyleSheet.create({
   container: {
@@ -191,8 +191,8 @@ export default function MusicScreen() {
   const router = useRouter();
   const { isSubscribed } = useAuth();
   const { isPurchased } = usePurchase();
-  const [exclusiveTracks, setExclusiveTracks] = useState<ExclusiveTrack[]>([]);
-  const [selectedTrack, setSelectedTrack] = useState<ExclusiveTrack | null>(null);
+  const [exclusiveTracks, setExclusiveTracks] = useState<Track[]>([]);
+  const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -208,10 +208,10 @@ export default function MusicScreen() {
   const loadExclusiveTracks = async () => {
     setIsLoading(true);
     console.log('MusicScreen: Fetching published tracks from backend database');
-    console.log('MusicScreen: Only tracks with status=published AND isActive=true will be returned');
+    console.log('MusicScreen: Only tracks with status=published will be returned');
     
     try {
-      const tracks = await getPublishedTracks();
+      const tracks = await listPublishedTracks();
       
       console.log('MusicScreen: ✅ Loaded exclusive tracks:', tracks.length);
       console.log('MusicScreen: Tracks are ordered newest first (recently uploaded appear at top)');
@@ -226,7 +226,7 @@ export default function MusicScreen() {
     }
   };
 
-  const handleTrackPress = (track: ExclusiveTrack) => {
+  const handleTrackPress = (track: Track) => {
     console.log('MusicScreen: User tapped track:', track.title);
     
     const hasAccess = isSubscribed || isPurchased(track.id);
@@ -260,21 +260,22 @@ export default function MusicScreen() {
     }
   };
 
-  const renderTrackCard = (track: ExclusiveTrack) => {
+  const renderTrackCard = (track: Track) => {
     const hasAccess = isSubscribed || isPurchased(track.id);
-    const priceDisplay = `$${track.price.toFixed(2)}`;
-    const durationDisplay = track.durationSeconds ? `${Math.floor(track.durationSeconds / 60)}:${(track.durationSeconds % 60).toString().padStart(2, '0')}` : '';
+    const priceDisplay = track.price !== undefined ? `$${Number(track.price).toFixed(2)}` : 'Free';
+    const durationSecs = track.duration ?? 0;
+    const durationDisplay = durationSecs > 0 ? `${Math.floor(durationSecs / 60)}:${(durationSecs % 60).toString().padStart(2, '0')}` : '';
     
     return (
       <View key={track.id} style={styles.trackCard}>
         <Image
-          source={{ uri: track.coverArtUrl }}
+          source={{ uri: track.cover_url }}
           style={styles.trackImage}
           resizeMode="cover"
         />
         <View style={styles.trackInfo}>
           <Text style={styles.trackTitle}>{track.title}</Text>
-          <Text style={styles.trackArtist}>{track.artistName}</Text>
+          <Text style={styles.trackArtist}>{track.artist}</Text>
           <Text style={styles.trackDescription}>{track.description}</Text>
           
           {!hasAccess && (
@@ -350,7 +351,7 @@ export default function MusicScreen() {
             <Text style={styles.modalMessage}>
               {selectedTrack?.title}
               {'\n'}
-              by {selectedTrack?.artistName}
+              by {selectedTrack?.artist}
               {'\n\n'}
               Get instant access to this exclusive track. After purchase, you can stream it anytime through the app.
             </Text>
