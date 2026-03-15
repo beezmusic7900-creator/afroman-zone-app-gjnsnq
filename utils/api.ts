@@ -28,7 +28,6 @@ export interface Track {
   price: number;
   duration_seconds: number | null;
   status: 'draft' | 'published';
-  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -52,7 +51,6 @@ export interface ExclusiveTrack {
   fileSizeBytes?: number;
   durationSeconds?: number;
   status: 'draft' | 'published';
-  isActive: boolean;
   /** @deprecated always empty string */
   uploadedBy: string;
   createdAt: string;
@@ -104,7 +102,6 @@ function mapTrackRow(row: any): Track {
     price: Number(row.price ?? 0),
     duration_seconds: row.duration_seconds ?? null,
     status: row.status,
-    is_active: row.is_active,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -125,7 +122,6 @@ function trackToExclusive(t: Track): ExclusiveTrack {
     fileSizeBytes: 0,
     durationSeconds: t.duration_seconds ?? 0,
     status: t.status,
-    isActive: t.is_active,
     uploadedBy: '',
     createdAt: t.created_at,
     updatedAt: t.updated_at,
@@ -142,7 +138,6 @@ export async function listPublishedTracks(): Promise<Track[]> {
     .from('tracks')
     .select('*')
     .eq('status', 'published')
-    .eq('is_active', true)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []).map(mapTrackRow);
@@ -217,7 +212,6 @@ export async function createTrackV2(input: CreateTrackInput): Promise<Track> {
       price: input.price,
       duration_seconds: input.duration_seconds ?? null,
       status: input.status ?? 'draft',
-      is_active: true,
     })
     .select()
     .single();
@@ -255,7 +249,6 @@ export async function createTrack(trackData: {
       audio_url: trackData.audioFileUrl,
       duration_seconds: trackData.durationSeconds ?? null,
       status: trackData.status,
-      is_active: trackData.isActive ?? true,
     })
     .select()
     .single();
@@ -276,7 +269,6 @@ export interface UpdateTrackInput {
   price?: number;
   duration_seconds?: number;
   status?: 'draft' | 'published';
-  is_active?: boolean;
 }
 
 export async function updateTrackV2(id: string, input: UpdateTrackInput): Promise<Track> {
@@ -289,7 +281,6 @@ export async function updateTrackV2(id: string, input: UpdateTrackInput): Promis
   if (input.price !== undefined) patch.price = input.price;
   if (input.duration_seconds !== undefined) patch.duration_seconds = input.duration_seconds;
   if (input.status !== undefined) patch.status = input.status;
-  if (input.is_active !== undefined) patch.is_active = input.is_active;
 
   const { data, error } = await supabase
     .from('tracks')
@@ -315,7 +306,6 @@ export async function updateTrack(
   if (updates.audioFileUrl !== undefined) patch.audio_url = updates.audioFileUrl;
   if (updates.durationSeconds !== undefined) patch.duration_seconds = updates.durationSeconds;
   if (updates.status !== undefined) patch.status = updates.status;
-  if (updates.isActive !== undefined) patch.is_active = updates.isActive;
 
   const { data, error } = await supabase
     .from('tracks')
