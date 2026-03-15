@@ -403,14 +403,12 @@ export async function uploadAudio(file: {
     throw new Error(`Could not read audio file: ${readErr?.message ?? String(readErr)}`);
   }
 
-  const ext = file.name.split('.').pop() ?? 'mp3';
-  const contentType = audioMimeType(file.type || ext);
   const filePath = `${Date.now()}-${file.name}`;
-  console.log('[uploadAudio] Uploading to Supabase storage — path:', filePath, 'contentType:', contentType);
+  console.log('[uploadAudio] Uploading to Supabase storage — path:', filePath);
 
   const { error } = await supabase.storage
     .from('tracks-audio')
-    .upload(filePath, arrayBuffer, { contentType, upsert: false });
+    .upload(filePath, arrayBuffer, { upsert: false });
   if (error) {
     console.error('[uploadAudio] Supabase storage error:', error);
     throw new Error(`Audio upload failed: ${error.message}`);
