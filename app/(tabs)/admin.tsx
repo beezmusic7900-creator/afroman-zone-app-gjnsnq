@@ -277,6 +277,7 @@ export default function AdminScreen() {
         cover_art_url: finalCoverArtUrl || undefined,
         audio_url: audioUploadResult.url,
         duration_seconds: undefined,
+        status: trackStatus === 'unpublished' ? 'draft' : 'published',
       });
       
       setTracks(prev => [newTrack, ...prev]);
@@ -303,9 +304,10 @@ export default function AdminScreen() {
       
       console.log('Admin: Track upload completed successfully - PERMANENT storage confirmed');
       
-    } catch (error) {
-      console.error('Admin: Error uploading track:', error);
-      showConfirm('Upload failed. Please try again. If the problem persists, check your internet connection.', () => {
+    } catch (error: any) {
+      const message = error?.message ?? String(error);
+      console.error('Admin: Error uploading track:', message, error);
+      showConfirm(`Upload failed: ${message}`, () => {
         setUploadProgress('');
       });
     } finally {

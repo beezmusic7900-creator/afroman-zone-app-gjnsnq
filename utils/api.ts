@@ -191,6 +191,7 @@ export interface CreateTrackInput {
   cover_art_url?: string;
   price: number;
   duration_seconds?: number;
+  status?: 'draft' | 'published';
 }
 
 export async function createTrackV2(input: CreateTrackInput): Promise<Track> {
@@ -204,7 +205,7 @@ export async function createTrackV2(input: CreateTrackInput): Promise<Track> {
       cover_art_url: input.cover_art_url ?? null,
       price: input.price,
       duration_seconds: input.duration_seconds ?? null,
-      status: 'draft',
+      status: input.status ?? 'draft',
       is_active: true,
     })
     .select()
@@ -358,6 +359,30 @@ export async function deleteTrack(trackId: string): Promise<{ success: boolean }
 // FILE UPLOAD  (POST /api/upload/audio  |  POST /api/upload/cover)
 // ============================================================================
 
+/** Normalise a file extension to a valid MIME type segment. */
+function audioMimeType(extOrMime: string): string {
+  const val = extOrMime.toLowerCase();
+  // If a full MIME type was passed, use it directly (but fix mp3 alias)
+  if (val.includes('/')) return val === 'audio/mp3' ? 'audio/mpeg' : val;
+  // Extension only
+  if (val === 'mp3') return 'audio/mpeg';
+  if (val === 'wav') return 'audio/wav';
+  if (val === 'm4a') return 'audio/mp4';
+  if (val === 'aac') return 'audio/aac';
+  if (val === 'ogg') return 'audio/ogg';
+  return `audio/${val}`;
+}
+
+function imageMimeType(extOrMime: string): string {
+  const val = extOrMime.toLowerCase();
+  if (val.includes('/')) return val === 'image/jpg' ? 'image/jpeg' : val;
+  if (val === 'jpg' || val === 'jpeg') return 'image/jpeg';
+  if (val === 'png') return 'image/png';
+  if (val === 'webp') return 'image/webp';
+  if (val === 'gif') return 'image/gif';
+  return `image/${val}`;
+}
+
 /**
  * Upload an audio file to the `tracks-audio` bucket.
  * Returns the public URL.
@@ -367,17 +392,32 @@ export async function uploadAudio(file: {
   name: string;
   type: string;
 }): Promise<{ url: string }> {
-  const base64 = await FileSystem.readAsStringAsync(file.uri, { encoding: 'base64' });
-  const arrayBuffer = decode(base64);
+  console.log('[uploadAudio] Reading file from URI:', file.uri);
+  let arrayBuffer: ArrayBuffer;
+  try {
+    const base64 = await FileSystem.readAsStringAsync(file.uri, { encoding: 'base64' });
+    arrayBuffer = decode(base64);
+    console.log('[uploadAudio] File read successfully, size (bytes):', arrayBuffer.byteLength);
+  } catch (readErr: any) {
+    console.error('[uploadAudio] Failed to read file from URI:', readErr);
+    throw new Error(`Could not read audio file: ${readErr?.message ?? String(readErr)}`);
+  }
+
   const ext = file.name.split('.').pop() ?? 'mp3';
+  const contentType = audioMimeType(file.type || ext);
   const filePath = `${Date.now()}-${file.name}`;
+  console.log('[uploadAudio] Uploading to Supabase storage — path:', filePath, 'contentType:', contentType);
 
   const { error } = await supabase.storage
     .from('tracks-audio')
-    .upload(filePath, arrayBuffer, { contentType: `audio/${ext}`, upsert: false });
-  if (error) throw error;
+    .upload(filePath, arrayBuffer, { contentType, upsert: false });
+  if (error) {
+    console.error('[uploadAudio] Supabase storage error:', error);
+    throw new Error(`Audio upload failed: ${error.message}`);
+  }
 
   const { data } = supabase.storage.from('tracks-audio').getPublicUrl(filePath);
+  console.log('[uploadAudio] Upload successful, public URL:', data.publicUrl);
   return { url: data.publicUrl };
 }
 
@@ -390,17 +430,32 @@ export async function uploadCover(file: {
   name: string;
   type: string;
 }): Promise<{ url: string }> {
-  const base64 = await FileSystem.readAsStringAsync(file.uri, { encoding: 'base64' });
-  const arrayBuffer = decode(base64);
+  console.log('[uploadCover] Reading file from URI:', file.uri);
+  let arrayBuffer: ArrayBuffer;
+  try {
+    const base64 = await FileSystem.readAsStringAsync(file.uri, { encoding: 'base64' });
+    arrayBuffer = decode(base64);
+    console.log('[uploadCover] File read successfully, size (bytes):', arrayBuffer.byteLength);
+  } catch (readErr: any) {
+    console.error('[uploadCover] Failed to read file from URI:', readErr);
+    throw new Error(`Could not read cover art file: ${readErr?.message ?? String(readErr)}`);
+  }
+
   const ext = file.name.split('.').pop() ?? 'jpg';
+  const contentType = imageMimeType(file.type || ext);
   const filePath = `${Date.now()}-${file.name}`;
+  console.log('[uploadCover] Uploading to Supabase storage — path:', filePath, 'contentType:', contentType);
 
   const { error } = await supabase.storage
     .from('tracks-covers')
-    .upload(filePath, arrayBuffer, { contentType: `image/${ext}`, upsert: false });
-  if (error) throw error;
+    .upload(filePath, arrayBuffer, { contentType, upsert: false });
+  if (error) {
+    console.error('[uploadCover] Supabase storage error:', error);
+    throw new Error(`Cover art upload failed: ${error.message}`);
+  }
 
   const { data } = supabase.storage.from('tracks-covers').getPublicUrl(filePath);
+  console.log('[uploadCover] Upload successful, public URL:', data.publicUrl);
   return { url: data.publicUrl };
 }
 
