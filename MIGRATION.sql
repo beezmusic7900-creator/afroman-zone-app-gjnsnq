@@ -1,92 +1,8 @@
--- ============================================================================
--- OGAfroman Music Tracks — Database Migration (v3 schema)
--- Run this in the Supabase SQL Editor:
---   https://supabase.com/dashboard/project/isrybftzkcaznszjefrw/sql/new
--- ============================================================================
+-- ============================================================
+-- Fix RLS policies for tracks-audio and tracks-covers buckets
+-- ============================================================
 
--- 1. Drop old table if it exists with the legacy schema, then create fresh
-DROP TABLE IF EXISTS tracks;
-
-CREATE TABLE tracks (
-  id           uuid           PRIMARY KEY DEFAULT gen_random_uuid(),
-  title        text           NOT NULL,
-  artist       text           NOT NULL,
-  album        text,
-  duration     integer,
-  audio_url    text,
-  cover_url    text,
-  price        numeric(10,2)  DEFAULT 0,
-  is_exclusive boolean        DEFAULT false,
-  status       text           DEFAULT 'draft',
-  genre        text,
-  description  text,
-  created_at   timestamptz    DEFAULT now(),
-  updated_at   timestamptz    DEFAULT now()
-);
-
--- 2. Enable RLS on tracks
-ALTER TABLE tracks ENABLE ROW LEVEL SECURITY;
-
--- 3. Policies on tracks
-DROP POLICY IF EXISTS "Public read published tracks" ON tracks;
-CREATE POLICY "Public read published tracks"
-  ON tracks FOR SELECT
-  USING (status = 'published');
-
-DROP POLICY IF EXISTS "Allow all operations" ON tracks;
-CREATE POLICY "Allow all operations"
-  ON tracks FOR ALL
-  USING (true)
-  WITH CHECK (true);
-
--- 4. Seed sample tracks
-INSERT INTO tracks (title, artist, album, duration, audio_url, cover_url, price, is_exclusive, status, genre, description) VALUES
-(
-  'Afro Vibes', 'OGAfroman', 'Roots & Rhythms', 214,
-  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-  'https://picsum.photos/seed/ogafroman1/400/400',
-  0.00, false, 'published', 'Afrobeats',
-  'A smooth afrobeats track with deep rhythms.'
-),
-(
-  'Lagos Nights', 'OGAfroman', 'Roots & Rhythms', 187,
-  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-  'https://picsum.photos/seed/ogafroman2/400/400',
-  1.99, false, 'published', 'Afrobeats',
-  'Inspired by the energy of Lagos nightlife.'
-),
-(
-  'Exclusive Heat', 'OGAfroman', 'Members Only', 243,
-  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-  'https://picsum.photos/seed/ogafroman3/400/400',
-  4.99, true, 'published', 'Afropop',
-  'Exclusive track for premium members only.'
-),
-(
-  'Motherland', 'OGAfroman', 'Heritage', 198,
-  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
-  'https://picsum.photos/seed/ogafroman4/400/400',
-  0.00, false, 'published', 'Afrobeats',
-  'A tribute to the African motherland.'
-),
-(
-  'Street Anthem', 'OGAfroman', 'Heritage', 221,
-  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
-  'https://picsum.photos/seed/ogafroman5/400/400',
-  2.99, false, 'published', 'Afropop',
-  'The streets speak through this anthem.'
-),
-(
-  'VIP Access', 'OGAfroman', 'Members Only', 265,
-  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3',
-  'https://picsum.photos/seed/ogafroman6/400/400',
-  9.99, true, 'published', 'Afrobeats',
-  'Exclusive VIP-only release.'
-);
-
--- ============================================================================
--- 5. Storage buckets — ensure they exist
--- ============================================================================
+-- 1. Create buckets if they don't exist, set public
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('tracks-audio', 'tracks-audio', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
@@ -95,11 +11,7 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('tracks-covers', 'tracks-covers', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
--- ============================================================================
--- 6. Storage RLS — drop ALL existing policies on storage.objects, then
---    recreate permissive ones for tracks-audio and tracks-covers so that
---    unauthenticated uploads succeed without RLS violations.
--- ============================================================================
+-- 2. Drop ALL existing policies on storage.objects for these buckets
 DO $$
 DECLARE
   pol RECORD;
@@ -113,42 +25,69 @@ BEGIN
   END LOOP;
 END $$;
 
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
--- tracks-audio: fully open (no auth required)
-CREATE POLICY "tracks-audio: allow select"
+-- 3. Create fully permissive policies for tracks-audio
+CREATE POLICY "tracks-audio: public select"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'tracks-audio');
 
-CREATE POLICY "tracks-audio: allow insert"
+CREATE POLICY "tracks-audio: public insert"
   ON storage.objects FOR INSERT
   WITH CHECK (bucket_id = 'tracks-audio');
 
-CREATE POLICY "tracks-audio: allow update"
+CREATE POLICY "tracks-audio: public update"
   ON storage.objects FOR UPDATE
-  USING (bucket_id = 'tracks-audio')
-  WITH CHECK (bucket_id = 'tracks-audio');
+  USING (bucket_id = 'tracks-audio');
 
-CREATE POLICY "tracks-audio: allow delete"
+CREATE POLICY "tracks-audio: public delete"
   ON storage.objects FOR DELETE
   USING (bucket_id = 'tracks-audio');
 
--- tracks-covers: fully open (no auth required)
-CREATE POLICY "tracks-covers: allow select"
+-- 4. Create fully permissive policies for tracks-covers
+CREATE POLICY "tracks-covers: public select"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'tracks-covers');
 
-CREATE POLICY "tracks-covers: allow insert"
+CREATE POLICY "tracks-covers: public insert"
   ON storage.objects FOR INSERT
   WITH CHECK (bucket_id = 'tracks-covers');
 
-CREATE POLICY "tracks-covers: allow update"
+CREATE POLICY "tracks-covers: public update"
   ON storage.objects FOR UPDATE
-  USING (bucket_id = 'tracks-covers')
-  WITH CHECK (bucket_id = 'tracks-covers');
+  USING (bucket_id = 'tracks-covers');
 
-CREATE POLICY "tracks-covers: allow delete"
+CREATE POLICY "tracks-covers: public delete"
   ON storage.objects FOR DELETE
   USING (bucket_id = 'tracks-covers');
 
-SELECT 'Migration v3 + storage RLS fix complete.' AS result;
+-- 5. Fix tracks table: ensure permissive INSERT without auth
+-- Drop any restrictive insert policies first
+DO $$
+DECLARE
+  pol RECORD;
+BEGIN
+  FOR pol IN
+    SELECT policyname
+    FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'tracks'
+      AND cmd = 'INSERT'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.tracks', pol.policyname);
+  END LOOP;
+END $$;
+
+-- Allow anyone to insert into tracks
+CREATE POLICY "tracks: public insert"
+  ON public.tracks FOR INSERT
+  WITH CHECK (true);
+
+-- Also ensure SELECT is open (needed for reads after insert)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'tracks'
+      AND cmd = 'SELECT' AND policyname = 'tracks: public select'
+  ) THEN
+    EXECUTE 'CREATE POLICY "tracks: public select" ON public.tracks FOR SELECT USING (true)';
+  END IF;
+END $$;

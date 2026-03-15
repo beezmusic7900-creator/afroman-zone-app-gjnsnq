@@ -1,4 +1,17 @@
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+
+// Dedicated client for storage uploads — explicitly sets the Authorization header
+// so RLS policies that check auth.role() = 'anon' are satisfied even when there
+// is no active session on the device.
+const SUPABASE_URL = 'https://isrybftzkcaznszjefrw.supabase.co';
+const SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzcnliZnR6a2Nhem5zemplZnJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1ODY0NjYsImV4cCI6MjA4OTE2MjQ2Nn0.xCBPjjwDUA7CcEzglMBk1V3c088eok50UwO7r08GR-M';
+
+const uploadClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: false },
+  global: { headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` } },
+});
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -381,7 +394,7 @@ export async function uploadAudio(file: {
   const filePath = `${Date.now()}-${file.name}`;
   console.log('[uploadAudio] Uploading to Supabase storage — path:', filePath);
 
-  const { data, error } = await supabase.storage
+  const { data, error } = await uploadClient.storage
     .from('tracks-audio')
     .upload(filePath, blob, { upsert: true });
   if (error) {
@@ -389,7 +402,7 @@ export async function uploadAudio(file: {
     throw new Error(`Audio upload failed: ${error.message}`);
   }
 
-  const { data: urlData } = supabase.storage.from('tracks-audio').getPublicUrl(filePath);
+  const { data: urlData } = uploadClient.storage.from('tracks-audio').getPublicUrl(filePath);
   console.log('[uploadAudio] Upload successful, public URL:', urlData.publicUrl);
   return { url: urlData.publicUrl };
 }
@@ -418,7 +431,7 @@ export async function uploadCover(file: {
   const filePath = `${Date.now()}-${file.name}`;
   console.log('[uploadCover] Uploading to Supabase storage — path:', filePath);
 
-  const { data, error } = await supabase.storage
+  const { data, error } = await uploadClient.storage
     .from('tracks-covers')
     .upload(filePath, blob, { upsert: true });
   if (error) {
@@ -426,7 +439,7 @@ export async function uploadCover(file: {
     throw new Error(`Cover art upload failed: ${error.message}`);
   }
 
-  const { data: urlData } = supabase.storage.from('tracks-covers').getPublicUrl(filePath);
+  const { data: urlData } = uploadClient.storage.from('tracks-covers').getPublicUrl(filePath);
   console.log('[uploadCover] Upload successful, public URL:', urlData.publicUrl);
   return { url: urlData.publicUrl };
 }
