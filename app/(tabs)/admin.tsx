@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Modal, Image, ActivityIndicator } from 'react-native';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { useAuth } from '@/contexts/AuthContext';
@@ -71,16 +71,7 @@ export default function AdminScreen() {
   const [videos, setVideos] = useState<ExclusiveVideo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (isAdminLoggedIn || isMusicDistributorLoggedIn) {
-      loadAllContent();
-      if (isAdminLoggedIn) {
-        loadUsers();
-      }
-    }
-  }, [isAdminLoggedIn, isMusicDistributorLoggedIn]);
-
-  const loadAllContent = async () => {
+  const loadAllContent = useCallback(async () => {
     setIsLoading(true);
     console.log('Admin: Loading all content for management from database');
     
@@ -97,11 +88,19 @@ export default function AdminScreen() {
       console.log('Admin: Tracks:', tracksData.length, 'Videos:', videosData.length);
     } catch (error) {
       console.error('Admin: Error loading content:', error);
-      showConfirm('Error loading content. Please try again.', () => {});
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isAdminLoggedIn || isMusicDistributorLoggedIn) {
+      loadAllContent();
+      if (isAdminLoggedIn) {
+        loadUsers();
+      }
+    }
+  }, [isAdminLoggedIn, isMusicDistributorLoggedIn, loadAllContent]);
 
   const loadUsers = async () => {
     console.log('Admin: Loading users');
