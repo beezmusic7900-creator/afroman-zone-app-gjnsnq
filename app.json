@@ -2,7 +2,7 @@
   "expo": {
     "name": "Official OGAfroman App",
     "slug": "official-ogafroman-app",
-    "version": "2.1.1",
+    "version": "2.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png",
     "userInterfaceStyle": "automatic",
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.afroman.app",
-      "buildNumber": "7",
+      "buildNumber": "8",
       "infoPlist": {
         "CFBundleURLTypes": [
           {
@@ -34,7 +34,7 @@
         "backgroundColor": "#000000"
       },
       "package": "com.afroman.app",
-      "versionCode": 7
+      "versionCode": 8
     },
     "web": {
       "favicon": "./assets/images/21d33427-3661-461b-8942-7bbf2cb57473.png"
