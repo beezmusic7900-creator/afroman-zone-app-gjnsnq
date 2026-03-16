@@ -245,7 +245,7 @@ export default function MusicScreen() {
     console.log('MusicScreen: User clicked purchase button for track:', selectedTrack?.title);
     setShowPurchaseModal(false);
     
-    const paymentUrl = 'https://buy.stripe.com/6oU3cx77D1hmcG92Xr6Na02';
+    const paymentUrl = 'https://buy.stripe.com/00w9AV0Jf8JO9tX41v6Na0d';
     console.log('MusicScreen: Opening Stripe payment link:', paymentUrl);
     
     try {
